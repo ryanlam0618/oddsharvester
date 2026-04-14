@@ -1,10 +1,12 @@
+from datetime import date, datetime, timedelta
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
+from zoneinfo import ZoneInfo
 
 from playwright.async_api import Page, TimeoutError
 import pytest
 
-from oddsharvester.core.base_scraper import BaseScraper
+from oddsharvester.core.base_scraper import BaseScraper, _parse_date_header
 from oddsharvester.core.browser_helper import BrowserHelper
 from oddsharvester.core.odds_portal_market_extractor import OddsPortalMarketExtractor
 from oddsharvester.core.playwright_manager import PlaywrightManager
@@ -178,6 +180,219 @@ async def test_extract_match_links_error(bs4_mock, setup_base_scraper_mocks):
 
     # Verify error handling
     assert result == []
+
+
+# -- Date header parser ---------------------------------------------------
+
+
+class TestParseDateHeader:
+    """Unit tests for the _parse_date_header helper."""
+
+    def test_today_returns_today_in_utc_by_default(self):
+        today_utc = datetime.now(ZoneInfo("UTC")).date()
+        assert _parse_date_header("Today, 14 Apr") == today_utc
+
+    def test_tomorrow_returns_today_plus_one_day(self):
+        today_utc = datetime.now(ZoneInfo("UTC")).date()
+        assert _parse_date_header("Tomorrow, 15 Apr") == today_utc + timedelta(days=1)
+
+    def test_yesterday_returns_today_minus_one_day(self):
+        today_utc = datetime.now(ZoneInfo("UTC")).date()
+        assert _parse_date_header("Yesterday, 13 Apr") == today_utc - timedelta(days=1)
+
+    def test_explicit_date_with_year(self):
+        assert _parse_date_header("18 Apr 2026") == date(2026, 4, 18)
+
+    def test_explicit_date_with_full_month_name(self):
+        # Only first 3 chars are looked up, so "April" should work the same as "Apr"
+        assert _parse_date_header("18 April 2026") == date(2026, 4, 18)
+
+    def test_tournament_suffix_is_stripped(self):
+        assert _parse_date_header("18 Apr 2026 - Apertura") == date(2026, 4, 18)
+
+    def test_today_with_tournament_suffix(self):
+        today_utc = datetime.now(ZoneInfo("UTC")).date()
+        assert _parse_date_header("Today, 14 Apr  - Apertura") == today_utc
+
+    def test_date_without_year_uses_current_year(self):
+        # Use a month close to today to avoid the >180 days roll-over heuristic
+        today = datetime.now(ZoneInfo("UTC")).date()
+        result = _parse_date_header(f"{today.day:02d} {today.strftime('%b')}")
+        assert result == today
+
+    def test_empty_string_returns_none(self):
+        assert _parse_date_header("") is None
+
+    def test_garbage_string_returns_none(self):
+        assert _parse_date_header("not a date") is None
+
+    def test_invalid_day_returns_none(self):
+        assert _parse_date_header("99 Apr 2026") is None
+
+    def test_invalid_month_returns_none(self):
+        assert _parse_date_header("18 Xyz 2026") is None
+
+    def test_invalid_tz_falls_back_to_utc(self):
+        # Unknown tz name should not crash, should fall back to UTC silently
+        today_utc = datetime.now(ZoneInfo("UTC")).date()
+        assert _parse_date_header("Today, 14 Apr", tz_name="Not/A_Real_Zone") == today_utc
+
+    def test_custom_timezone_used_for_today(self):
+        # "Today" should resolve to current date in the specified timezone
+        tokyo_today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+        assert _parse_date_header("Today, 14 Apr", tz_name="Asia/Tokyo") == tokyo_today
+
+
+# -- extract_match_links with date_filter ---------------------------------
+
+
+def _make_league_page_html() -> str:
+    """Build a minimal OddsPortal-like HTML page with 3 date groups."""
+    return """
+    <html><body>
+      <div class="eventRow">
+        <div data-testid="date-header">Today, 14 Apr</div>
+        <a href="/football/england/premier-league/match-one/aaaaaaa1">Match 1</a>
+      </div>
+      <div class="eventRow">
+        <a href="/football/england/premier-league/match-two/aaaaaaa2">Match 2</a>
+      </div>
+      <div class="eventRow">
+        <div data-testid="date-header">18 Apr 2026</div>
+        <a href="/football/england/premier-league/match-three/aaaaaaa3">Match 3</a>
+      </div>
+      <div class="eventRow">
+        <a href="/football/england/premier-league/match-four/aaaaaaa4">Match 4</a>
+      </div>
+      <div class="eventRow">
+        <div data-testid="date-header">19 Apr 2026</div>
+        <a href="/football/england/premier-league/match-five/aaaaaaa5">Match 5</a>
+      </div>
+    </body></html>
+    """
+
+
+@pytest.mark.asyncio
+async def test_extract_match_links_date_filter_matches_one_group(setup_base_scraper_mocks):
+    """Only rows under the matching date-header should be kept."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_league_page_html())
+
+    result = await scraper.extract_match_links(page=page_mock, date_filter=date(2026, 4, 18))
+
+    # Match 3 and Match 4 both inherit the "18 Apr 2026" header (Match 4 has no
+    # header of its own so it inherits from the previous one).
+    assert result == [
+        f"{ODDSPORTAL_BASE_URL}/football/england/premier-league/match-three/aaaaaaa3",
+        f"{ODDSPORTAL_BASE_URL}/football/england/premier-league/match-four/aaaaaaa4",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_extract_match_links_date_filter_no_match_returns_empty(setup_base_scraper_mocks):
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_league_page_html())
+
+    result = await scraper.extract_match_links(page=page_mock, date_filter=date(2030, 1, 1))
+    assert result == []
+
+
+@pytest.mark.asyncio
+async def test_extract_match_links_date_filter_none_preserves_all_links(setup_base_scraper_mocks):
+    """Regression baseline: without date_filter, all links are returned."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(return_value=_make_league_page_html())
+
+    result = await scraper.extract_match_links(page=page_mock)
+    assert len(result) == 5
+    assert all("/match-" in link for link in result)
+
+
+@pytest.mark.asyncio
+async def test_extract_match_links_unparseable_header_fails_safe(setup_base_scraper_mocks):
+    """Rows under an unparseable header should be kept (fail-safe)."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value="""
+        <html><body>
+          <div class="eventRow">
+            <div data-testid="date-header">Some gibberish</div>
+            <a href="/football/england/premier-league/match-x/xxxxxxx1">Match X</a>
+          </div>
+          <div class="eventRow">
+            <div data-testid="date-header">18 Apr 2026</div>
+            <a href="/football/england/premier-league/match-y/yyyyyyy1">Match Y</a>
+          </div>
+        </body></html>
+        """
+    )
+
+    result = await scraper.extract_match_links(page=page_mock, date_filter=date(2026, 4, 18))
+
+    # Match X survives because its header is unparseable (fail-safe).
+    # Match Y matches the filter explicitly.
+    assert f"{ODDSPORTAL_BASE_URL}/football/england/premier-league/match-x/xxxxxxx1" in result
+    assert f"{ODDSPORTAL_BASE_URL}/football/england/premier-league/match-y/yyyyyyy1" in result
+
+
+@pytest.mark.asyncio
+async def test_extract_match_links_deduplicates_preserving_order(setup_base_scraper_mocks):
+    """Duplicate links across rows should be deduplicated while preserving order."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    page_mock.content = AsyncMock(
+        return_value="""
+        <html><body>
+          <div class="eventRow">
+            <a href="/football/england/premier-league/match-one/aaaaaaa1">L1</a>
+            <a href="/football/england/premier-league/match-one/aaaaaaa1">L1 dup</a>
+          </div>
+          <div class="eventRow">
+            <a href="/football/england/premier-league/match-two/aaaaaaa2">L2</a>
+          </div>
+        </body></html>
+        """
+    )
+
+    result = await scraper.extract_match_links(page=page_mock)
+    assert result == [
+        f"{ODDSPORTAL_BASE_URL}/football/england/premier-league/match-one/aaaaaaa1",
+        f"{ODDSPORTAL_BASE_URL}/football/england/premier-league/match-two/aaaaaaa2",
+    ]
+
+
+@pytest.mark.asyncio
+async def test_extract_match_links_uses_playwright_manager_timezone(setup_base_scraper_mocks):
+    """Reference timezone should be read from PlaywrightManager when filtering."""
+    mocks = setup_base_scraper_mocks
+    scraper = mocks["scraper"]
+    page_mock = mocks["page_mock"]
+    mocks["playwright_manager_mock"].timezone_id = "Asia/Tokyo"
+
+    # "Today" in Tokyo becomes the reference date
+    tokyo_today = datetime.now(ZoneInfo("Asia/Tokyo")).date()
+    page_mock.content = AsyncMock(
+        return_value="""
+        <html><body>
+          <div class="eventRow">
+            <div data-testid="date-header">Today, 14 Apr</div>
+            <a href="/football/england/premier-league/tokyo-match/tttttttt">Tokyo match</a>
+          </div>
+        </body></html>
+        """
+    )
+
+    result = await scraper.extract_match_links(page=page_mock, date_filter=tokyo_today)
+    assert len(result) == 1
 
 
 @pytest.mark.asyncio

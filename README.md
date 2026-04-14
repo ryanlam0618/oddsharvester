@@ -124,7 +124,7 @@ oddsharvester historic -s football -l england-premier-league --season 2024-2025 
 | `--market` | `-m` | Comma-separated markets (e.g. `1x2,btts`) | — |
 | `--match-link` | | Specific match URL (repeatable). Overrides `--sport`, `--date`, `--league` | — |
 
-**`upcoming` only:** `--date` is required unless `--league` or `--match-link` is provided. When `--league` is set, `--date` is ignored.
+**`upcoming` only:** `--date` is required unless `--league` or `--match-link` is provided. `--date` and `--league` can be combined to filter the league's upcoming matches down to a specific calendar day. When combining both, the reference timezone for resolving the date is `--timezone` if provided, otherwise UTC.
 
 **`historic` only:**
 

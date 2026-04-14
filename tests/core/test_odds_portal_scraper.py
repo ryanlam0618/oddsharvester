@@ -1,3 +1,4 @@
+from datetime import date
 from unittest.mock import ANY, AsyncMock, MagicMock, patch
 
 from playwright.async_api import Browser, BrowserContext, Page
@@ -201,7 +202,7 @@ async def test_scrape_upcoming(url_builder_mock, setup_scraper_mocks):
     # Call the method under test
     result = await scraper.scrape_upcoming(
         sport="football",
-        date="2023-06-01",
+        date="20260601",
         league="premier-league",
         markets=["1x2", "over_under"],
         scrape_odds_history=False,
@@ -209,11 +210,14 @@ async def test_scrape_upcoming(url_builder_mock, setup_scraper_mocks):
 
     # Verify the interactions
     url_builder_mock.get_upcoming_matches_url.assert_called_once_with(
-        sport="football", date="2023-06-01", league="premier-league"
+        sport="football", date="20260601", league="premier-league"
     )
     page_mock.goto.assert_called_once()
     scraper._prepare_page_for_scraping.assert_called_once_with(page=page_mock)
-    scraper.extract_match_links.assert_called_once_with(page=page_mock)
+    scraper.extract_match_links.assert_called_once()
+    _, extract_kwargs = scraper.extract_match_links.call_args
+    assert extract_kwargs["page"] is page_mock
+    assert extract_kwargs["date_filter"] == date(2026, 6, 1)
     scraper.extract_match_odds.assert_called_once_with(
         sport="football",
         match_links=["https://oddsportal.com/match1", "https://oddsportal.com/match2"],

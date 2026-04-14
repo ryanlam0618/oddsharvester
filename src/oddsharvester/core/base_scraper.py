@@ -1,11 +1,12 @@
 import asyncio
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime, timedelta
 from enum import Enum
 import json
 import logging
 import random
 import re
 from typing import Any
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from bs4 import BeautifulSoup
 from playwright.async_api import Page, TimeoutError
@@ -32,6 +33,97 @@ from oddsharvester.utils.constants import (
 )
 from oddsharvester.utils.odds_format_enum import OddsFormat
 from oddsharvester.utils.utils import clean_html_text
+
+_MONTH_ABBREV_TO_NUM = {
+    "jan": 1,
+    "feb": 2,
+    "mar": 3,
+    "apr": 4,
+    "may": 5,
+    "jun": 6,
+    "jul": 7,
+    "aug": 8,
+    "sep": 9,
+    "oct": 10,
+    "nov": 11,
+    "dec": 12,
+}
+
+
+def _parse_date_header(header_text: str, tz_name: str | None = None) -> date | None:
+    """
+    Parse an OddsPortal date-header string into a date object.
+
+    Handles the formats observed on oddsportal.com listing pages:
+        - "Today, 14 Apr"          -> today in the reference timezone
+        - "Tomorrow, 15 Apr"       -> tomorrow in the reference timezone
+        - "Yesterday, 13 Apr"      -> yesterday in the reference timezone
+        - "18 Apr 2026"            -> explicit date
+        - "Today, 14 Apr  - Apertura" -> tournament suffix is stripped
+
+    When "Today"/"Tomorrow" is present it is trusted over the day/month tokens,
+    since OddsPortal resolves them based on the browser timezone.
+
+    Args:
+        header_text: Raw inner text of the [data-testid='date-header'] element.
+        tz_name: IANA timezone name used to resolve "Today"/"Tomorrow" and to
+            infer missing years. Defaults to UTC.
+
+    Returns:
+        A date object, or None if the input cannot be parsed (fail-safe: callers
+        should treat None as "do not filter").
+    """
+    if not header_text:
+        return None
+
+    text = header_text.strip()
+    if " - " in text:
+        text = text.split(" - ", 1)[0].strip()
+
+    try:
+        tz = ZoneInfo(tz_name) if tz_name else ZoneInfo("UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        tz = ZoneInfo("UTC")
+
+    now_date = datetime.now(tz).date()
+
+    lower = text.lower()
+    if lower.startswith("today"):
+        return now_date
+    if lower.startswith("tomorrow"):
+        return now_date + timedelta(days=1)
+    if lower.startswith("yesterday"):
+        return now_date - timedelta(days=1)
+
+    parts = text.split()
+
+    if len(parts) == 3:
+        day_str, month_str, year_str = parts
+        try:
+            day = int(day_str)
+            month = _MONTH_ABBREV_TO_NUM.get(month_str[:3].lower())
+            year = int(year_str)
+            if month is None:
+                return None
+            return date(year, month, day)
+        except (ValueError, TypeError):
+            return None
+
+    if len(parts) == 2:
+        day_str, month_str = parts
+        try:
+            day = int(day_str)
+            month = _MONTH_ABBREV_TO_NUM.get(month_str[:3].lower())
+            if month is None:
+                return None
+            candidate = date(now_date.year, month, day)
+            if (now_date - candidate).days > 180:
+                candidate = date(now_date.year + 1, month, day)
+            return candidate
+        except (ValueError, TypeError):
+            return None
+
+    return None
 
 
 class BaseScraper:
@@ -105,12 +197,22 @@ class BaseScraper:
         except Exception as e:
             self.logger.error(f"Error while setting odds format: {e}", exc_info=True)
 
-    async def extract_match_links(self, page: Page) -> list[str]:
+    async def extract_match_links(self, page: Page, date_filter: date | None = None) -> list[str]:
         """
         Extract and parse match links from the current page.
 
+        Event rows on OddsPortal listing pages are grouped by date: the first
+        row of a group carries a `[data-testid='date-header']` element, and
+        subsequent rows in the same group inherit that date. When `date_filter`
+        is provided, rows are iterated in document order, the "current" date
+        header is tracked, and only rows whose group matches the filter are
+        kept.
+
         Args:
             page (Page): A Playwright Page instance for this task.
+            date_filter (Optional[date]): If provided, keep only match links
+                whose surrounding date-header matches this date. Rows under a
+                date-header that cannot be parsed are kept (fail-safe).
 
         Returns:
             List[str]: A list of unique match links found on the page.
@@ -121,15 +223,50 @@ class BaseScraper:
             event_rows = soup.find_all(class_=re.compile(OddsPortalSelectors.EVENT_ROW_CLASS_PATTERN))
             self.logger.info(f"Found {len(event_rows)} event rows.")
 
-            match_links = {
-                f"{ODDSPORTAL_BASE_URL}{link['href']}"
-                for row in event_rows
-                for link in row.find_all("a", href=True)
-                if len(link["href"].strip("/").split("/")) > 3
-            }
+            tz_name = getattr(self.playwright_manager, "timezone_id", None) if date_filter else None
 
-            self.logger.info(f"Extracted {len(match_links)} unique match links.")
-            return list(match_links)
+            seen: set[str] = set()
+            match_links: list[str] = []
+            current_row_date: date | None = None
+            filtered_out_count = 0
+            unparseable_header_count = 0
+
+            for row in event_rows:
+                if date_filter is not None:
+                    header_el = row.find(attrs={"data-testid": "date-header"})
+                    if header_el is not None:
+                        header_text = header_el.get_text(" ", strip=True)
+                        parsed = _parse_date_header(header_text, tz_name=tz_name)
+                        if parsed is None:
+                            unparseable_header_count += 1
+                            self.logger.warning(
+                                f"Could not parse date-header '{header_text}'; rows under it will not be filtered."
+                            )
+                        current_row_date = parsed
+
+                    if current_row_date is not None and current_row_date != date_filter:
+                        filtered_out_count += 1
+                        continue
+
+                for link in row.find_all("a", href=True):
+                    href = link["href"]
+                    if len(href.strip("/").split("/")) <= 3:
+                        continue
+                    full_url = f"{ODDSPORTAL_BASE_URL}{href}"
+                    if full_url not in seen:
+                        seen.add(full_url)
+                        match_links.append(full_url)
+
+            if date_filter is not None:
+                self.logger.info(
+                    f"Extracted {len(match_links)} unique match links after date filtering "
+                    f"(filter={date_filter.isoformat()}, filtered out {filtered_out_count} rows, "
+                    f"{unparseable_header_count} unparseable headers)."
+                )
+            else:
+                self.logger.info(f"Extracted {len(match_links)} unique match links.")
+
+            return match_links
 
         except Exception as e:
             self.logger.error(f"Error extracting match links: {e}", exc_info=True)

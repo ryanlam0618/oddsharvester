@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from enum import Enum
 import random
 
@@ -179,7 +180,17 @@ class OddsPortalScraper(BaseScraper):
             content_check_selector="div[class*='eventRow']",
         )
 
-        match_links = await self.extract_match_links(page=current_page)
+        # League page shows all upcoming dates; when a specific date is requested,
+        # post-filter links by the date-header rendered above each row group.
+        date_filter = None
+        if league and date:
+            try:
+                date_filter = datetime.strptime(date, "%Y%m%d").date()
+                self.logger.info(f"Applying date filter for league page: {date_filter.isoformat()}")
+            except ValueError:
+                self.logger.warning(f"Could not parse date '{date}' for filtering; returning all league matches.")
+
+        match_links = await self.extract_match_links(page=current_page, date_filter=date_filter)
 
         if not match_links:
             self.logger.warning("No match links found for upcoming matches.")

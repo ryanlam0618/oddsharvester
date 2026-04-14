@@ -33,6 +33,7 @@ class PlaywrightManager:
         self.browser = None
         self.context = None
         self.page = None
+        self.timezone_id: str | None = None
 
     async def initialize(
         self,
@@ -51,6 +52,7 @@ class PlaywrightManager:
         """
         try:
             self.logger.info("Starting Playwright...")
+            self.timezone_id = timezone_id
             self.playwright = await async_playwright().start()
 
             browser_args = PLAYWRIGHT_BROWSER_ARGS_DOCKER if is_running_in_docker() else PLAYWRIGHT_BROWSER_ARGS
