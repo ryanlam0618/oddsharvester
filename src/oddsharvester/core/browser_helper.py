@@ -1,5 +1,6 @@
 from enum import Enum
 import logging
+import re
 import time
 
 from playwright.async_api import Page
@@ -59,15 +60,30 @@ class BrowserHelper:
         Returns:
             bool: True if the banner was dismissed, False otherwise.
         """
-        if selector is None:
-            selector = OddsPortalSelectors.COOKIE_BANNER
+        selectors = [selector] if selector else OddsPortalSelectors.COOKIE_BANNER_SELECTORS
 
         try:
             self.logger.info("Checking for cookie banner...")
-            await page.wait_for_selector(selector, timeout=timeout)
-            self.logger.info("Cookie banner found. Dismissing it.")
-            await page.click(selector)
-            return True
+
+            for candidate in selectors:
+                try:
+                    button = await page.query_selector(candidate)
+                    if not button:
+                        continue
+
+                    if not await button.is_visible():
+                        continue
+
+                    self.logger.info(f"Cookie banner found via '{candidate}'. Dismissing it.")
+                    await self._safe_click(page=page, element=button, reason=f"cookie banner via {candidate}")
+                    await page.wait_for_timeout(500)
+                    return True
+                except Exception as inner_error:
+                    self.logger.debug(f"Cookie banner selector '{candidate}' failed: {inner_error}")
+                    continue
+
+            self.logger.info("No cookie banner detected.")
+            return False
 
         except PlaywrightTimeoutError:
             self.logger.info("No cookie banner detected.")
@@ -76,6 +92,57 @@ class BrowserHelper:
         except Exception as e:
             self.logger.error(f"Error while dismissing cookie banner: {e}")
             return False
+
+    async def dismiss_overlays(self, page: Page) -> bool:
+        """Try to dismiss or neutralize obstructive overlays/modals that intercept clicks."""
+        dismissed_any = False
+
+        try:
+            for dismiss_selector in OddsPortalSelectors.OVERLAY_DISMISS_SELECTORS:
+                try:
+                    elements = await page.query_selector_all(dismiss_selector)
+                    for element in elements[:5]:
+                        try:
+                            if not await element.is_visible():
+                                continue
+                            text = (await element.text_content() or "").strip()
+                            self.logger.info(
+                                f"Attempting overlay dismiss via '{dismiss_selector}'"
+                                + (f" (text='{text[:60]}')" if text else "")
+                            )
+                            if await self._safe_click(page=page, element=element, reason="overlay dismiss"):
+                                dismissed_any = True
+                                await page.wait_for_timeout(500)
+                        except Exception as click_error:
+                            self.logger.debug(f"Overlay dismiss click failed: {click_error}")
+                except Exception as selector_error:
+                    self.logger.debug(f"Overlay dismiss selector failed '{dismiss_selector}': {selector_error}")
+
+            # Hide lingering overlays that still intercept pointer events.
+            await page.evaluate(
+                """
+                (selectors) => {
+                    for (const selector of selectors) {
+                        for (const el of document.querySelectorAll(selector)) {
+                            const style = window.getComputedStyle(el);
+                            const isVisible = style && style.display !== 'none' && style.visibility !== 'hidden';
+                            if (isVisible) {
+                                el.setAttribute('data-oh-hidden-overlay', '1');
+                                el.style.setProperty('display', 'none', 'important');
+                                el.style.setProperty('visibility', 'hidden', 'important');
+                                el.style.setProperty('pointer-events', 'none', 'important');
+                            }
+                        }
+                    }
+                }
+                """,
+                OddsPortalSelectors.OVERLAY_SELECTORS,
+            )
+
+            return dismissed_any
+        except Exception as e:
+            self.logger.debug(f"Overlay dismissal encountered an issue: {e}")
+            return dismissed_any
 
     # =============================================================================
     # BOOKMAKER FILTER MANAGEMENT
@@ -334,6 +401,7 @@ class BrowserHelper:
             bool: True if the market tab was successfully selected, False otherwise.
         """
         self.logger.info(f"Attempting to navigate to market tab: {market_tab_name}")
+        await self.dismiss_overlays(page)
 
         # First attempt: Try to find the market directly in visible tabs
         market_found = False
@@ -573,10 +641,8 @@ class BrowserHelper:
 
             for element in elements:
                 element_text = await element.text_content()
-
-                if element_text and text in element_text:
-                    await element.click()
-                    return True
+                if element_text and self._text_matches(element_text, text):
+                    return await self._safe_click(page=page, element=element, reason=f"click text '{text}'")
 
             self.logger.info(f"Element with text '{text}' not found.")
             return False
@@ -601,16 +667,20 @@ class BrowserHelper:
         """
         try:
             more_clicked = False
+            await self.dismiss_overlays(page)
             for selector in OddsPortalSelectors.MORE_BUTTON_SELECTORS:
                 try:
-                    more_element = await page.query_selector(selector)
-                    if more_element:
-                        text = await more_element.text_content()
-                        if text and ("more" in text.lower() or "..." in text):
+                    more_elements = await page.query_selector_all(selector)
+                    for more_element in more_elements:
+                        text = (await more_element.text_content() or "").strip()
+                        normalized = self._normalize_text(text)
+                        if normalized in {"more", "...", "more..."} or normalized.startswith("more "):
                             self.logger.info(f"Clicking 'More' button: '{text.strip()}'")
-                            await more_element.click()
-                            more_clicked = True
-                            break
+                            if await self._safe_click(page=page, element=more_element, reason="More button"):
+                                more_clicked = True
+                                break
+                    if more_clicked:
+                        break
                 except Exception as e:
                     self.logger.debug(f"Exception while searching for 'More' button with selector '{selector}': {e}")
                     continue
@@ -624,13 +694,13 @@ class BrowserHelper:
             dropdown_selectors = OddsPortalSelectors.get_dropdown_selectors_for_market(market_tab_name)
             for selector in dropdown_selectors:
                 try:
-                    dropdown_element = await page.query_selector(selector)
-                    if dropdown_element:
+                    dropdown_elements = await page.query_selector_all(selector)
+                    for dropdown_element in dropdown_elements:
                         text = await dropdown_element.text_content()
-                        if text and market_tab_name.lower() in text.lower():
+                        if text and self._text_matches(text, market_tab_name):
                             self.logger.info(f"Found '{market_tab_name}' in dropdown. Clicking...")
-                            await dropdown_element.click()
-                            return True
+                            if await self._safe_click(page=page, element=dropdown_element, reason=f"dropdown market {market_tab_name}"):
+                                return True
                 except Exception as e:
                     self.logger.debug(
                         f"Exception while searching for market '{market_tab_name}' in dropdown with selector "
@@ -678,7 +748,7 @@ class BrowserHelper:
                     active_element = await page.query_selector(selector)
                     if active_element:
                         text = await active_element.text_content()
-                        if text and market_tab_name.lower() in text.lower():
+                        if text and self._text_matches(text, market_tab_name):
                             self.logger.info(f"Tab '{market_tab_name}' is confirmed active")
                             return True
                 except Exception as e:
@@ -696,4 +766,55 @@ class BrowserHelper:
 
         except Exception as e:
             self.logger.error(f"Error verifying tab is active: {e}")
+            return False
+
+    def _normalize_text(self, text: str | None) -> str:
+        """Normalize text for safer UI matching."""
+        if not text:
+            return ""
+        normalized = re.sub(r"\s+", " ", text).strip().lower()
+        return normalized.replace("\u00a0", " ")
+
+    def _text_matches(self, candidate: str | None, target: str | None) -> bool:
+        """Prefer exact-ish normalized matching over loose substring matching."""
+        candidate_norm = self._normalize_text(candidate)
+        target_norm = self._normalize_text(target)
+        if not candidate_norm or not target_norm:
+            return False
+        if candidate_norm == target_norm:
+            return True
+        candidate_tokens = [token.strip() for token in re.split(r"[|/\\-]", candidate_norm) if token.strip()]
+        return target_norm in candidate_tokens
+
+    async def _safe_click(self, page: Page, element, reason: str = "element") -> bool:
+        """Click robustly when normal clicks are intercepted by overlays or animations."""
+        try:
+            try:
+                await element.scroll_into_view_if_needed()
+            except Exception:
+                pass
+
+            await self.dismiss_overlays(page)
+
+            try:
+                await element.click(timeout=3000)
+                return True
+            except Exception as click_error:
+                self.logger.debug(f"Normal click failed for {reason}: {click_error}")
+
+            try:
+                await element.click(timeout=3000, force=True)
+                return True
+            except Exception as force_error:
+                self.logger.debug(f"Forced click failed for {reason}: {force_error}")
+
+            try:
+                await element.evaluate("el => el.click()")
+                return True
+            except Exception as eval_error:
+                self.logger.debug(f"DOM click failed for {reason}: {eval_error}")
+
+            return False
+        except Exception as e:
+            self.logger.debug(f"Safe click failed for {reason}: {e}")
             return False

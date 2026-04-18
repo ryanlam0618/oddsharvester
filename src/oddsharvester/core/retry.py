@@ -104,8 +104,8 @@ def classify_error(error_message: str | None) -> ErrorType:
     return ErrorType.UNKNOWN
 
 
-async def retry_with_backoff[T](
-    func: Callable[..., Coroutine[Any, Any, T]],
+async def retry_with_backoff(
+    func: Callable[..., Coroutine[Any, Any, Any]],
     *args: Any,
     config: RetryConfig | None = None,
     **kwargs: Any,

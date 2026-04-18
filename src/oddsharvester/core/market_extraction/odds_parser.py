@@ -1,4 +1,10 @@
-from datetime import UTC, datetime
+"""
+Odds Parser with fixed modal parsing.
+
+This module handles parsing of odds data from HTML content.
+"""
+
+from datetime import datetime, timezone
 import logging
 import re
 from typing import Any
@@ -93,52 +99,90 @@ class OddsParser:
         """
         Parses the HTML content of an odds history modal.
 
+        The modal HTML format is:
+        "Odds movement | 15 Mar, 01:27 | 1.39 | +0.03 | Opening odds: | 08 Mar, 01:32 | 1.36"
+
+        This gives us:
+        - Current odds with timestamp (close to match time)
+        - Change from opening
+        - Opening odds with timestamp
+
         Args:
             modal_html (str): Raw HTML from the modal.
 
         Returns:
-            dict: Parsed odds history data, including historical odds and the opening odds.
+            dict: Parsed odds history data with current_odds, change, opening_odds, and timestamps.
         """
         self.logger.info("Parsing modal content for odds history.")
-        soup = BeautifulSoup(modal_html, "html.parser")
+        
+        result = {
+            'current_odds': None,
+            'current_timestamp': None,
+            'change': None,
+            'opening_odds': None,
+            'opening_timestamp': None,
+            'closing_odds': None,  # Alias for current_odds (same thing)
+            'closing_timestamp': None,  # Alias for current_timestamp
+        }
 
         try:
-            odds_history = []
-            timestamps = soup.select("div.flex.flex-col.gap-1 > div.flex.gap-3 > div.font-normal")
-            odds_values = soup.select("div.flex.flex-col.gap-1 + div.flex.flex-col.gap-1 > div.font-bold")
-
-            for ts, odd in zip(timestamps, odds_values, strict=False):
-                time_text = ts.get_text(strip=True)
-                try:
-                    dt = datetime.strptime(time_text, "%d %b, %H:%M")
-                    formatted_time = dt.replace(year=datetime.now(UTC).year).isoformat()
-                except ValueError:
-                    self.logger.warning(f"Failed to parse datetime: {time_text}")
-                    continue
-
-                odds_history.append({"timestamp": formatted_time, "odds": parse_odds_value(odd.get_text(strip=True))})
-
-            # Parse opening odds
-            opening_odds_block = soup.select_one("div.mt-2.gap-1")
-            opening_ts_div = opening_odds_block.select_one("div.flex.gap-1 div")
-            opening_val_div = opening_odds_block.select_one("div.flex.gap-1 .font-bold")
-
-            opening_odds = None
-            if opening_ts_div and opening_val_div:
-                try:
-                    dt = datetime.strptime(opening_ts_div.get_text(strip=True), "%d %b, %H:%M")
-                    opening_odds = {
-                        "timestamp": dt.replace(year=datetime.now(UTC).year).isoformat(),
-                        "odds": parse_odds_value(opening_val_div.get_text(strip=True)),
-                    }
-                except ValueError:
-                    self.logger.warning("Failed to parse opening odds timestamp.")
-
-            return {"odds_history": odds_history, "opening_odds": opening_odds}
-
+            soup = BeautifulSoup(modal_html, "html.parser")
+            
+            # Get raw text
+            text = soup.get_text(separator=" | ", strip=True)
+            
+            # Pattern: Odds movement | 15 Mar, 01:27 | 1.39 | +0.03 | Opening odds: | 08 Mar, 01:32 | 1.36
+            pattern = r"(\d{1,2}\s+\w{3},?\s+\d{2}:\d{2})\s*\|\s*(\d+\.\d+)\s*\|\s*([+-]\d+\.\d+)\s*\|\s*Opening odds:\s*\|\s*(\d{1,2}\s+\w{3},?\s+\d{2}:\d{2})\s*\|\s*(\d+\.\d+)"
+            match = re.search(pattern, text)
+            
+            if match:
+                current_ts, current_odds_str, change, opening_ts, opening_odds_str = match.groups()
+                
+                result['current_timestamp'] = self._parse_timestamp(current_ts)
+                result['current_odds'] = parse_odds_value(current_odds_str)
+                result['change'] = change
+                result['opening_timestamp'] = self._parse_timestamp(opening_ts)
+                result['opening_odds'] = parse_odds_value(opening_odds_str)
+                
+                # Alias for clarity
+                result['closing_odds'] = result['current_odds']
+                result['closing_timestamp'] = result['current_timestamp']
+                
+                self.logger.info(
+                    f"Parsed odds history: current={result['current_odds']} ({result['current_timestamp']}), "
+                    f"opening={result['opening_odds']} ({result['opening_timestamp']}), change={change}"
+                )
+            else:
+                self.logger.warning(f"Could not parse odds history modal with pattern. Text: {text[:100]}")
+                
         except Exception as e:
             self.logger.error(f"Failed to parse odds history modal: {e}")
-            return {}
+            
+        return result
+
+    def _parse_timestamp(self, time_text: str) -> str:
+        """
+        Parse a timestamp string like "15 Mar, 01:27" to ISO format.
+        
+        Args:
+            time_text: Timestamp string in format "DD MMM, HH:MM" or "DD MMM HH:MM"
+            
+        Returns:
+            ISO format datetime string
+        """
+        if not time_text:
+            return None
+            
+        try:
+            # Handle both "15 Mar, 01:27" and "15 Mar 01:27" formats
+            time_text = time_text.replace(',', ' ').strip()
+            dt = datetime.strptime(time_text, "%d %b %H:%M")
+            # Use current year
+            dt = dt.replace(year=datetime.now(timezone.utc).year)
+            return dt.isoformat()
+        except ValueError:
+            self.logger.warning(f"Failed to parse timestamp: {time_text}")
+            return time_text
 
     def _extract_bookmaker_name(self, block: Tag) -> str | None:
         """Extract bookmaker name from a row using a fallback chain.

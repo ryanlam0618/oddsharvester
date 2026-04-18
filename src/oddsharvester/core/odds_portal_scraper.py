@@ -260,6 +260,7 @@ class OddsPortalScraper(BaseScraper):
         """
         await self.set_odds_format(page=page)
         await self.browser_helper.dismiss_cookie_banner(page=page)
+        await self.browser_helper.dismiss_overlays(page=page)
 
     async def _get_pagination_info(self, page: Page, max_pages: int | None) -> list[int]:
         """

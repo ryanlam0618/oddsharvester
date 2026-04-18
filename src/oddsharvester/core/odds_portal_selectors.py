@@ -6,6 +6,52 @@ class OddsPortalSelectors:
 
     # Cookie banner
     COOKIE_BANNER = "#onetrust-accept-btn-handler"
+    COOKIE_BANNER_SELECTORS: ClassVar[list[str]] = [
+        "#onetrust-accept-btn-handler",
+        "button#onetrust-accept-btn-handler",
+        "button:has-text('Accept')",
+        "button:has-text('Accept All')",
+        "button:has-text('I Agree')",
+        "button:has-text('Agree')",
+        "button:has-text('OK')",
+        "button:has-text('Got it')",
+    ]
+
+    # Generic overlays / consent / modal surfaces that may intercept clicks
+    OVERLAY_SELECTORS: ClassVar[list[str]] = [
+        "#onetrust-banner-sdk",
+        "#onetrust-consent-sdk",
+        ".onetrust-pc-dark-filter",
+        "[id*='onetrust']",
+        "[class*='onetrust']",
+        "[id*='consent']",
+        "[class*='consent']",
+        "[id*='cookie']",
+        "[class*='cookie']",
+        "[class*='modal']",
+        "[class*='overlay']",
+        "[role='dialog']",
+        "[aria-modal='true']",
+        ".overlay-bookie-modal",
+    ]
+
+    # Dismiss / close actions for overlays
+    OVERLAY_DISMISS_SELECTORS: ClassVar[list[str]] = [
+        "button:has-text('Accept')",
+        "button:has-text('Accept All')",
+        "button:has-text('Agree')",
+        "button:has-text('I Agree')",
+        "button:has-text('OK')",
+        "button:has-text('Got it')",
+        "button:has-text('Close')",
+        "button:has-text('×')",
+        "button[aria-label='Close']",
+        "[role='button'][aria-label='Close']",
+        ".modal button",
+        ".modal [role='button']",
+        ".overlay-bookie-modal button",
+        ".overlay-bookie-modal [role='button']",
+    ]
 
     # Market navigation tabs
     MARKET_TAB_SELECTORS: ClassVar[list[str]] = [
