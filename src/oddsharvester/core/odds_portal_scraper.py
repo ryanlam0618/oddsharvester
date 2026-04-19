@@ -149,9 +149,23 @@ class OddsPortalScraper(BaseScraper):
         self.logger.info("Step 1: Analyzing pagination information...")
         pages_to_scrape = await self._get_pagination_info(page=current_page, max_pages=max_pages)
 
+        # Parse season years for season-aware date filtering in link collection
+        import re
+        season_year: int | None = None
+        season_end_year: int | None = None
+        m = re.match(r"^(\d{4})-(\d{4})$", season)
+        if m:
+            season_year = int(m.group(1))
+            season_end_year = int(m.group(2))
+
         # Collect match links from all pages
         self.logger.info("Step 2: Collecting match links from all pages...")
-        link_result = await self._collect_match_links(base_url=base_url, pages_to_scrape=pages_to_scrape)
+        link_result = await self._collect_match_links(
+            base_url=base_url,
+            pages_to_scrape=pages_to_scrape,
+            season_year=season_year,
+            season_end_year=season_end_year,
+        )
 
         if link_result.failed_pages:
             self.logger.warning(f"Failed to collect links from pages: {link_result.failed_pages}")
@@ -392,18 +406,39 @@ class OddsPortalScraper(BaseScraper):
 
         return all_pages
 
-    async def _collect_match_links(self, base_url: str, pages_to_scrape: list[int]) -> LinkCollectionResult:
+    async def _collect_match_links(
+        self,
+        base_url: str,
+        pages_to_scrape: list[int],
+        season_year: int | None = None,
+        season_end_year: int | None = None,
+    ) -> LinkCollectionResult:
         """
         Collects match links from multiple pages.
 
         Args:
             base_url (str): The base URL of the historic matches.
             pages_to_scrape (List[int]): Pages to scrape.
+            season_year (Optional[int]): Start year of the season (e.g. 2016 for "2016-2017").
+                If not provided, extracted from base_url.
+            season_end_year (Optional[int]): End year of the season (e.g. 2017 for "2016-2017").
+                If not provided, extracted from base_url.
 
         Returns:
             LinkCollectionResult: Contains links found and tracking of successful/failed pages.
         """
+        import re
+
+        if season_year is None or season_end_year is None:
+            # Try to extract season from URL: .../laliga-2016-2017/...
+            m = re.search(r"/-(\d{4})-\d{4}/", base_url)
+            if m:
+                season_year = int(m.group(1))
+                season_end_year = season_year + 1
+
         self.logger.info(f"Starting collection of match links from {len(pages_to_scrape)} pages")
+        if season_year is not None:
+            self.logger.info(f"Season filtering: {season_year}-{season_end_year}")
         self.logger.info(f"Pages to process: {pages_to_scrape}")
 
         result = LinkCollectionResult()
@@ -443,7 +478,11 @@ class OddsPortalScraper(BaseScraper):
                     self.logger.warning(f"Scrolling may not have completed for page {page_number}")
 
                 self.logger.info(f"Extracting match links from page {page_number}...")
-                links = await self.extract_match_links(page=tab)
+                links = await self.extract_match_links(
+                    page=tab,
+                    season_year=season_year,
+                    season_end_year=season_end_year,
+                )
                 all_links.extend(links)
                 result.successful_pages += 1
                 self.logger.info(f"Extracted {len(links)} links from page {page_number}")

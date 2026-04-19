@@ -51,7 +51,7 @@ _MONTH_ABBREV_TO_NUM = {
 }
 
 
-def _parse_date_header(header_text: str, tz_name: str | None = None) -> date | None:
+def _parse_date_header(header_text: str, tz_name: str | None = None, season_year: int | None = None) -> date | None:
     """
     Parse an OddsPortal date-header string into a date object.
 
@@ -60,6 +60,7 @@ def _parse_date_header(header_text: str, tz_name: str | None = None) -> date | N
         - "Tomorrow, 15 Apr"       -> tomorrow in the reference timezone
         - "Yesterday, 13 Apr"      -> yesterday in the reference timezone
         - "18 Apr 2026"            -> explicit date
+        - "14 Apr"                 -> inferred year (see season_year below)
         - "Today, 14 Apr  - Apertura" -> tournament suffix is stripped
 
     When "Today"/"Tomorrow" is present it is trusted over the day/month tokens,
@@ -69,6 +70,10 @@ def _parse_date_header(header_text: str, tz_name: str | None = None) -> date | N
         header_text: Raw inner text of the [data-testid='date-header'] element.
         tz_name: IANA timezone name used to resolve "Today"/"Tomorrow" and to
             infer missing years. Defaults to UTC.
+        season_year: Calendar year to assume for 2-part headers like "14 Apr".
+            This should be the START year of the season (e.g. 2016 for "2016-2017").
+            The function handles the Aug–May season split automatically:
+            Jun–Dec → season_year; Jan–May → season_year + 1.
 
     Returns:
         A date object, or None if the input cannot be parsed (fail-safe: callers
@@ -117,9 +122,23 @@ def _parse_date_header(header_text: str, tz_name: str | None = None) -> date | N
             month = _MONTH_ABBREV_TO_NUM.get(month_str[:3].lower())
             if month is None:
                 return None
-            candidate = date(now_date.year, month, day)
-            if (now_date - candidate).days > 180:
-                candidate = date(now_date.year + 1, month, day)
+
+            if season_year is not None:
+                # season_year is the START year of a season like "2016-2017".
+                # Most football leagues run Aug–May, so:
+                #   Jan–May  → calendar year AFTER season_year
+                #   Jun–Dec  → season_year itself
+                if month >= 6:
+                    candidate = date(season_year, month, day)
+                else:
+                    candidate = date(season_year + 1, month, day)
+            else:
+                candidate = date(now_date.year, month, day)
+                # If the inferred date is > 180 days in the future, the user
+                # probably meant next year (e.g. "14 Apr" asked in Apr 2026).
+                if (candidate - now_date).days > 180:
+                    candidate = date(now_date.year + 1, month, day)
+
             return candidate
         except (ValueError, TypeError):
             return None
@@ -286,7 +305,13 @@ class BaseScraper:
             self.logger.error(f"Error while setting odds format: {e}", exc_info=True)
             raise
 
-    async def extract_match_links(self, page: Page, date_filter: date | None = None) -> list[str]:
+    async def extract_match_links(
+        self,
+        page: Page,
+        date_filter: date | None = None,
+        season_year: int | None = None,
+        season_end_year: int | None = None,
+    ) -> list[str]:
         """
         Extract and parse match links from the current page.
 
@@ -295,13 +320,18 @@ class BaseScraper:
         subsequent rows in the same group inherit that date. When `date_filter`
         is provided, rows are iterated in document order, the "current" date
         header is tracked, and only rows whose group matches the filter are
-        kept.
+        kept. When `season_year` and `season_end_year` are provided, rows are
+        filtered to the Aug–May season range.
 
         Args:
             page (Page): A Playwright Page instance for this task.
             date_filter (Optional[date]): If provided, keep only match links
-                whose surrounding date-header matches this date. Rows under a
-                date-header that cannot be parsed are kept (fail-safe).
+                whose surrounding date-header matches this date.
+            season_year (Optional[int]): Start year of the season (e.g. 2016 for
+                "2016-2017"). Used to correctly parse 2-part date headers.
+            season_end_year (Optional[int]): End year of the season (e.g. 2017
+                for "2016-2017"). Used together with season_year to filter
+                rows outside the Aug(year)–May(end_year) range.
 
         Returns:
             List[str]: A list of unique match links found on the page.
@@ -312,7 +342,8 @@ class BaseScraper:
             event_rows = soup.find_all(class_=re.compile(OddsPortalSelectors.EVENT_ROW_CLASS_PATTERN))
             self.logger.info(f"Found {len(event_rows)} event rows.")
 
-            tz_name = getattr(self.playwright_manager, "timezone_id", None) if date_filter else None
+            use_date_filter = date_filter is not None or season_year is not None
+            tz_name = getattr(self.playwright_manager, "timezone_id", None) if use_date_filter else None
 
             seen: set[str] = set()
             match_links: list[str] = []
@@ -321,11 +352,11 @@ class BaseScraper:
             unparseable_header_count = 0
 
             for row in event_rows:
-                if date_filter is not None:
+                if use_date_filter:
                     header_el = row.find(attrs={"data-testid": "date-header"})
                     if header_el is not None:
                         header_text = header_el.get_text(" ", strip=True)
-                        parsed = _parse_date_header(header_text, tz_name=tz_name)
+                        parsed = _parse_date_header(header_text, tz_name=tz_name, season_year=season_year)
                         if parsed is None:
                             unparseable_header_count += 1
                             self.logger.warning(
@@ -333,9 +364,16 @@ class BaseScraper:
                             )
                         current_row_date = parsed
 
-                    if current_row_date is not None and current_row_date != date_filter:
-                        filtered_out_count += 1
-                        continue
+                    if current_row_date is not None:
+                        if date_filter is not None and current_row_date != date_filter:
+                            filtered_out_count += 1
+                            continue
+                        if season_year is not None and season_end_year is not None:
+                            season_start = date(season_year, 8, 1)
+                            season_end = date(season_end_year, 5, 31)
+                            if not (season_start <= current_row_date <= season_end):
+                                filtered_out_count += 1
+                                continue
 
                 for link in row.find_all("a", href=True):
                     href = link["href"].strip()
@@ -346,7 +384,6 @@ class BaseScraper:
                     if any(
                         blocked in href_lower
                         for blocked in (
-                            "/h2h/",
                             "/results/",
                             "/standings/",
                             "/outrights/",
@@ -356,11 +393,8 @@ class BaseScraper:
                     ):
                         continue
 
-                    parts = [part for part in href.strip("/").split("/") if part]
-                    if len(parts) < 5:
-                        continue
-
-                    if "#" not in href:
+                    parts = [p for p in href.strip("/").split("/") if p]
+                    if len(parts) < 4:
                         continue
 
                     full_url = f"{ODDSPORTAL_BASE_URL}{href}"
@@ -372,6 +406,12 @@ class BaseScraper:
                 self.logger.info(
                     f"Extracted {len(match_links)} unique match links after date filtering "
                     f"(filter={date_filter.isoformat()}, filtered out {filtered_out_count} rows, "
+                    f"{unparseable_header_count} unparseable headers)."
+                )
+            elif season_year is not None and season_end_year is not None:
+                self.logger.info(
+                    f"Extracted {len(match_links)} unique match links after season filtering "
+                    f"({season_year}-{season_end_year}, filtered out {filtered_out_count} rows, "
                     f"{unparseable_header_count} unparseable headers)."
                 )
             else:
