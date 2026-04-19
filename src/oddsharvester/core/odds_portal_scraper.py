@@ -806,46 +806,45 @@ class OddsPortalScraper(BaseScraper):
                             away_score = int(score_match.group(2))
 
             # Extract basic odds (1/X/2) from odd containers
+            # Structure: Each odds value is in a div with class containing 'next-m:min-w-[80%]...font-bold...'
+            # The containers appear in order: 1 (home win), X (draw), 2 (away win)
+            # Odd container types:
+            #   - odd-container-winning: home win odds (lowest = winning pick)
+            #   - odd-container-default: draw or away win odds
             odds_1 = None
             odds_x = None
             odds_2 = None
 
-            # Find odd containers - they typically follow the participants div
-            # The odds are in the secondary header or in odd-specific divs
-            secondary_header = row.find(attrs={"data-testid": "secondary-header"})
-            if secondary_header:
-                # Find all odd values - they are usually <p> or <div> elements after the date
-                odd_elements = secondary_header.find_all("p")
-                # Or find divs with specific classes
-                if not odd_elements:
-                    odd_elements = row.find_all(attrs={"data-testid": re.compile(r"odd-container")})
-                
-                odd_values = []
-                for el in odd_elements:
+            # Find all odd containers by data-testid
+            odd_containers = row.find_all(attrs={"data-testid": re.compile(r"odd-container")})
+            
+            if odd_containers:
+                # Extract odds values from the first occurrence of each container type
+                # The order in the HTML is: winning (1), default (X), default (2)
+                # But we need to filter out duplicates (each appears twice for desktop/mobile)
+                odds_values = []
+                seen_texts = set()
+                for el in odd_containers:
                     text = el.get_text(strip=True)
-                    try:
-                        val = float(text)
-                        odd_values.append(val)
-                    except ValueError:
-                        continue
+                    # Only take the first occurrence of each unique value
+                    if text not in seen_texts:
+                        try:
+                            val = float(text)
+                            if 1.0 <= val <= 50.0:  # Filter for reasonable odds values
+                                odds_values.append(val)
+                                seen_texts.add(text)
+                        except ValueError:
+                            continue
                 
-                if len(odd_values) >= 3:
-                    odds_1 = odd_values[0]
-                    odds_x = odd_values[1]
-                    odds_2 = odd_values[2]
-
-            # Fallback: look for odds in the row text
-            # The text contains odds like "1.38 | 6.20 | 9.80"
-            if odds_1 is None:
-                row_text = row.get_text(" ")
-                # Find all decimal numbers that look like odds (between 1.0 and 50.0)
-                odd_pattern = re.findall(r"\b(\d+\.\d+)\b", row_text)
-                valid_odds = [float(o) for o in odd_pattern if 1.0 <= float(o) <= 50.0]
-                if len(valid_odds) >= 3:
-                    # First 3 odds are typically 1, X, 2
-                    odds_1 = valid_odds[0]
-                    odds_x = valid_odds[1]
-                    odds_2 = valid_odds[2]
+                # Map odds to 1, X, 2
+                # Based on the HTML structure:
+                # - First unique odds value = 1 (home win)
+                # - Second unique odds value = X (draw)
+                # - Third unique odds value = 2 (away win)
+                if len(odds_values) >= 3:
+                    odds_1 = odds_values[0]
+                    odds_x = odds_values[1]
+                    odds_2 = odds_values[2]
 
             # Get league name from breadcrumb
             league_name = None
