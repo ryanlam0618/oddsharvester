@@ -425,6 +425,25 @@ class BaseScraper:
         request_counter = {"count": 0}
         checkpoint_lock = asyncio.Lock()
 
+        async def save_checkpoint(data: dict[str, Any]):
+            if not checkpoint_file_path:
+                return
+
+            async with checkpoint_lock:
+                try:
+                    store_data(
+                        storage_type=checkpoint_storage_type,
+                        data=[data],
+                        storage_format=checkpoint_storage_format,
+                        file_path=checkpoint_file_path,
+                    )
+                    self.logger.info(f"Checkpoint saved 1 record to {checkpoint_file_path}")
+                except Exception as checkpoint_error:
+                    self.logger.error(
+                        f"Checkpoint save failed for {checkpoint_file_path}: {checkpoint_error}",
+                        exc_info=True,
+                    )
+
         async def scrape_with_semaphore(link: str) -> tuple[str, dict[str, Any] | None, FailedUrl | None]:
             async with semaphore:
                 # Apply rate limiting delay (skip for the first request)
@@ -451,6 +470,7 @@ class BaseScraper:
 
                     if retry_result.success and retry_result.result is not None:
                         self.logger.info(f"Successfully scraped match link: {link} (attempts: {retry_result.attempts})")
+                        await save_checkpoint(retry_result.result)
                         return (link, retry_result.result, None)
                     else:
                         # Scraping failed after retries
@@ -493,21 +513,6 @@ class BaseScraper:
             if data is not None:
                 result.success.append(data)
                 result.stats.successful += 1
-                if checkpoint_file_path:
-                    async with checkpoint_lock:
-                        try:
-                            store_data(
-                                storage_type=checkpoint_storage_type,
-                                data=[data],
-                                storage_format=checkpoint_storage_format,
-                                file_path=checkpoint_file_path,
-                            )
-                            self.logger.info(f"Checkpoint saved 1 record to {checkpoint_file_path}")
-                        except Exception as checkpoint_error:
-                            self.logger.error(
-                                f"Checkpoint save failed for {checkpoint_file_path}: {checkpoint_error}",
-                                exc_info=True,
-                            )
             elif failed_url is not None:
                 result.failed.append(failed_url)
                 result.stats.failed += 1
