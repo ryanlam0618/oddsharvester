@@ -106,6 +106,10 @@ class OddsPortalScraper(BaseScraper):
         self.logger.info("Setting consent cookies in browser context...")
         await self.browser_helper.set_consent_cookies_for_context(current_page.context)
 
+        # Block OneTrust scripts before navigation to prevent bot detection
+        self.logger.info("Blocking OneTrust scripts to prevent bot detection...")
+        await self.playwright_manager.block_one_trust_for_page(current_page)
+
         # Navigate to the base URL
         self.logger.info("Navigating to base URL...")
         await current_page.goto(base_url, timeout=60000)
@@ -289,6 +293,9 @@ class OddsPortalScraper(BaseScraper):
         Args:
             page: Playwright page instance.
         """
+        # Block OneTrust scripts to prevent bot detection (before any navigation)
+        await self.playwright_manager.block_one_trust_for_page(page)
+        
         # Set consent cookies before dismissing banner (needed for each page navigation)
         await self.browser_helper.set_consent_cookie_via_page_js(page)
         

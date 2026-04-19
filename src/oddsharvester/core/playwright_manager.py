@@ -204,11 +204,38 @@ class PlaywrightManager:
             await self.context.add_init_script(STEALTH_SCRIPT)
 
             self.page = await self.context.new_page()
+            
+            # Block OneTrust scripts to prevent bot detection
+            await self._block_one_trust_scripts(self.page)
+            
             self.logger.info("Playwright initialized successfully.")
 
         except Exception as e:
             self.logger.error(f"Failed to initialize Playwright: {e!s}")
             raise
+
+    async def _block_one_trust_scripts(self, page: Page) -> None:
+        """Block OneTrust scripts to prevent bot detection.
+        
+        OneTrust has sophisticated bot detection that our stealth script can't fully bypass.
+        This method blocks OneTrust scripts from loading, preventing bot detection from running.
+        """
+        patterns = [
+            "**/*onetrust*",
+            "**/*cookielaw*",
+            "**/*otSDKStub*",
+            "**/*consent*",
+        ]
+        
+        for pattern in patterns:
+            try:
+                await page.route(pattern, lambda route: route.abort())
+            except Exception as e:
+                self.logger.debug(f"Failed to block pattern {pattern}: {e}")
+
+    async def block_one_trust_for_page(self, page: Page) -> None:
+        """Block OneTrust scripts for a specific page (call before navigation)."""
+        await self._block_one_trust_scripts(page)
 
     async def cleanup(self):
         """Properly closes Playwright instances."""
