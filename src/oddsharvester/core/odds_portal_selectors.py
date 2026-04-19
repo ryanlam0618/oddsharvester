@@ -56,14 +56,10 @@ class OddsPortalSelectors:
 
     # Dismiss / close actions for overlays
     OVERLAY_DISMISS_SELECTORS: ClassVar[list[str]] = [
-        "button:has-text('Accept')",
-        "button:has-text('Accept All')",
-        "button:has-text('Agree')",
-        "button:has-text('I Agree')",
-        "button:has-text('OK')",
-        "button:has-text('Got it')",
-        "button:has-text('Close')",
-        "button:has-text('×')",
+        "#onetrust-banner-sdk button:has-text('Accept')",
+        "#onetrust-banner-sdk button:has-text('Accept All')",
+        "#onetrust-consent-sdk button:has-text('Accept')",
+        "#onetrust-consent-sdk button:has-text('Accept All')",
         "button[aria-label='Close']",
         "[role='button'][aria-label='Close']",
         ".modal button",
