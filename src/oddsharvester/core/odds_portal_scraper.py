@@ -77,6 +77,9 @@ class OddsPortalScraper(BaseScraper):
         bookies_filter: BookiesFilter = BookiesFilter.ALL,
         period: Enum | None = None,
         request_delay: float = DEFAULT_REQUEST_DELAY_S,
+        checkpoint_file_path: str | None = None,
+        checkpoint_storage_type: str = "local",
+        checkpoint_storage_format: str = "json",
     ) -> ScrapeResult:
         """
         Scrapes historical odds data.
@@ -167,6 +170,9 @@ class OddsPortalScraper(BaseScraper):
             bookies_filter=bookies_filter,
             period=period,
             request_delay=request_delay,
+            checkpoint_file_path=checkpoint_file_path,
+            checkpoint_storage_type=checkpoint_storage_type,
+            checkpoint_storage_format=checkpoint_storage_format,
         )
 
     async def scrape_upcoming(
