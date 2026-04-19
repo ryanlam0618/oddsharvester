@@ -6,12 +6,97 @@ from playwright.async_api import async_playwright
 from oddsharvester.utils.constants import PLAYWRIGHT_BROWSER_ARGS, PLAYWRIGHT_BROWSER_ARGS_DOCKER
 from oddsharvester.utils.utils import is_running_in_docker
 
-# Anti-detection script to hide automation signatures
+# Comprehensive anti-detection script to hide automation signatures
 STEALTH_SCRIPT = """
-Object.defineProperty(navigator, "webdriver", {get: () => undefined});
-window.chrome = {runtime: {}};
-Object.defineProperty(navigator, "plugins", {get: () => [1, 2, 3, 4, 5]});
-Object.defineProperty(navigator, "languages", {get: () => ["en-US", "en"]});
+(function() {
+    // Remove webdriver property entirely
+    delete navigator.webdriver;
+    Object.defineProperty(navigator, 'webdriver', {get: () => false});
+    
+    // Chrome runtime object
+    window.chrome = { runtime: {}, App: {}, csi: function(){}, loadTimes: function(){} };
+    
+    // Mock plugins to look real
+    const mockPlugins = [
+        { name: 'Chrome PDF Plugin', description: 'Portable Document Format', filename: 'internal-pdf-viewer' },
+        { name: 'Chrome PDF Viewer', description: '', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai' },
+        { name: 'Native Client', description: '', filename: 'internal-nacl-plugin' }
+    ];
+    Object.defineProperty(navigator, 'plugins', {get: () => mockPlugins, enumerable: true});
+    
+    // Mock languages
+    Object.defineProperty(navigator, 'languages', {get: () => ['en-US', 'en', 'zh-Hant', 'zh'], enumerable: true});
+    
+    // Remove automation-related permissions
+    const originalQuery = window.navigator.permissions.query;
+    window.navigator.permissions.query = (parameters) => (
+        parameters.name === 'notifications' || 
+        parameters.name === 'midi' || 
+        parameters.name === 'camera' ||
+        parameters.name === 'microphone'
+        ) ? Promise.resolve({ state: Notification.permission }) : originalQuery(parameters);
+    
+    // Patch getComputedStyle to hide automation
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = (element, pseudoElement) => {
+        const style = originalGetComputedStyle(element, pseudoElement);
+        if (style.zoom !== undefined) style.zoom = '1';
+        return style;
+    };
+    
+    // Mock Connection information
+    Object.defineProperty(navigator, 'connection', {get: () => ({
+        effectiveType: '4g',
+        downlink: 10,
+        rtt: 50,
+        downlinkMax: 1000
+    }), enumerable: true});
+    
+    // Remove Playwright-specific variables
+    delete window.__playwright_evaluator__;
+    delete window.__playwright_unpatched__;
+    
+    // Patch OneTrust if it exists
+    if (window.Optanon) {
+        window.Optanon.IsAlertBoxClosed = () => true;
+        window.Optanon.GetDomain = () => '';
+    }
+    
+    // Set consent cookie immediately
+    try {
+        const consentValue = 'groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CC0006%3A1%2CC0007%3A1%2CC0008%3A1%2CC0009%3A1%2CC0010%3A1%2CC0011%3A1%2CC0012%3A1%2CC0013%3A1%2CC0014%3A1%2CC0015%3A1%2CC0016%3A1%2CC0017%3A1%2CC0018%3A1%2CC0019%3A1%2CC0020%3A1%2CC0021%3A1%2CC0022%3A1%2CC0023%3A1%2CC0024%3A1%2CC0025%3A1';
+        document.cookie = 'OptanonConsent=' + consentValue + '; domain=.oddsportal.com; path=/; max-age=31536000';
+        document.cookie = 'OptanonConsent=' + consentValue + '; domain=www.oddsportal.com; path=/; max-age=31536000';
+        document.cookie = 'OptanonAlertBoxClosed=Sun%20Apr%2019%202026%2000%3A00%3A00%20GMT%2B0000%20(Coordinated%20Universal%20Time); domain=.oddsportal.com; path=/; max-age=31536000';
+    } catch(e) {}
+    
+    // Override document.cookie to always return our consent cookies
+    const originalCookieDescriptor = Object.getOwnPropertyDescriptor(Document.prototype, 'cookie');
+    const consentCookies = [
+        'OptanonConsent=groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CC0006%3A1%2CC0007%3A1%2CC0008%3A1%2CC0009%3A1%2CC0010%3A1%2CC0011%3A1%2CC0012%3A1%2CC0013%3A1%2CC0014%3A1%2CC0015%3A1%2CC0016%3A1%2CC0017%3A1%2CC0018%3A1%2CC0019%3A1%2CC0020%3A1%2CC0021%3A1%2CC0022%3A1%2CC0023%3A1%2CC0024%3A1%2CC0025%3A1',
+        'OptanonAlertBoxClosed=Sun%20Apr%2019%202026%2000%3A00%3A00%20GMT%2B0000%20(Coordinated%20Universal%20Time)'
+    ];
+    
+    Object.defineProperty(Document.prototype, 'cookie', {
+        get: function() {
+            const cookies = originalCookieDescriptor.get.call(this);
+            if (this.domain && (this.domain.includes('oddsportal') || this.domain === '')) {
+                if (!cookies.includes('OptanonConsent')) {
+                    return cookies + (cookies ? '; ' : '') + consentCookies.join('; ');
+                }
+            }
+            return cookies;
+        },
+        set: function(value) {
+            // Allow setting consent cookies, block others
+            if (value && (value.includes('OptanonConsent') || value.includes('OptanonAlertBoxClosed'))) {
+                return originalCookieDescriptor.set.call(this, value);
+            }
+            return originalCookieDescriptor.set.call(this, value);
+        },
+        configurable: true
+    });
+})();
 """
 
 # Default user agents that look like real browsers
