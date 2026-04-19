@@ -240,7 +240,10 @@ class OddsPortalMarketExtractor:
                     if modals:
                         all_histories = []
                         for modal_html in modals:
-                            parsed_history = self.odds_parser.parse_odds_history_modal(modal_html)
+                            parsed_history = self.odds_parser.parse_odds_history_modal(
+                                modal_html,
+                                reference_match_date=match_data.get("match_date") if match_data else None,
+                            )
                             if parsed_history:
                                 all_histories.append(parsed_history)
 

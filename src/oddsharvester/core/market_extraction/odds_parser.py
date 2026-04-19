@@ -4,7 +4,7 @@ Odds Parser with fixed modal parsing.
 This module handles parsing of odds data from HTML content.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 import logging
 import re
 from typing import Any
@@ -95,7 +95,7 @@ class OddsParser:
         self.logger.info(f"Successfully parsed odds for {len(odds_data)} bookmakers.")
         return odds_data
 
-    def parse_odds_history_modal(self, modal_html: str) -> dict[str, Any]:
+    def parse_odds_history_modal(self, modal_html: str, reference_match_date: str | None = None) -> dict[str, Any]:
         """
         Parses the HTML content of an odds history modal.
 
@@ -109,6 +109,8 @@ class OddsParser:
 
         Args:
             modal_html (str): Raw HTML from the modal.
+            reference_match_date (str | None): Match datetime string used to infer
+                the correct calendar year for modal timestamps that omit a year.
 
         Returns:
             dict: Parsed odds history data with current_odds, change, opening_odds, and timestamps.
@@ -138,10 +140,10 @@ class OddsParser:
             if match:
                 current_ts, current_odds_str, change, opening_ts, opening_odds_str = match.groups()
                 
-                result['current_timestamp'] = self._parse_timestamp(current_ts)
+                result['current_timestamp'] = self._parse_timestamp(current_ts, reference_match_date)
                 result['current_odds'] = parse_odds_value(current_odds_str)
                 result['change'] = change
-                result['opening_timestamp'] = self._parse_timestamp(opening_ts)
+                result['opening_timestamp'] = self._parse_timestamp(opening_ts, reference_match_date)
                 result['opening_odds'] = parse_odds_value(opening_odds_str)
                 
                 # Alias for clarity
@@ -160,13 +162,14 @@ class OddsParser:
             
         return result
 
-    def _parse_timestamp(self, time_text: str) -> str:
+    def _parse_timestamp(self, time_text: str, reference_match_date: str | None = None) -> str:
         """
         Parse a timestamp string like "15 Mar, 01:27" to ISO format.
         
         Args:
             time_text: Timestamp string in format "DD MMM, HH:MM" or "DD MMM HH:MM"
-            
+            reference_match_date: Match datetime string used to infer the year.
+
         Returns:
             ISO format datetime string
         """
@@ -177,8 +180,29 @@ class OddsParser:
             # Handle both "15 Mar, 01:27" and "15 Mar 01:27" formats
             time_text = time_text.replace(',', ' ').strip()
             dt = datetime.strptime(time_text, "%d %b %H:%M")
-            # Use current year
-            dt = dt.replace(year=datetime.now(timezone.utc).year)
+
+            reference_dt = None
+            if reference_match_date:
+                try:
+                    reference_dt = datetime.strptime(reference_match_date, "%Y-%m-%d %H:%M:%S %Z")
+                except ValueError:
+                    try:
+                        reference_dt = datetime.fromisoformat(reference_match_date.replace("Z", "+00:00"))
+                    except ValueError:
+                        self.logger.debug(
+                            f"Could not parse reference_match_date for odds history year inference: {reference_match_date}"
+                        )
+
+            base_year = reference_dt.year if reference_dt else datetime.now(timezone.utc).year
+            dt = dt.replace(year=base_year, tzinfo=UTC)
+
+            if reference_dt:
+                # Odds history timestamps should be near or before the match date.
+                # If month/day falls after the match date in the same inferred year,
+                # treat it as belonging to the previous calendar year (season crossover).
+                if dt > reference_dt.replace(tzinfo=UTC):
+                    dt = dt.replace(year=dt.year - 1)
+
             return dt.isoformat()
         except ValueError:
             self.logger.warning(f"Failed to parse timestamp: {time_text}")
