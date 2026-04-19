@@ -1,0 +1,169 @@
+2026-04-19 14:01:35,268 - root - INFO - Logging initialized. Log level: INFO (No file output)
+2026-04-19 14:01:35,271 - oddsharvester.utils.utils - INFO - No period specified, using default for football: 'full_time'
+2026-04-19 14:01:35,271 - ScraperApp - INFO - Starting scraper with parameters: command=scrape_historic, match_links=None, sport=football, date=None, leagues=['italy-serie-a'], season=2016-2017, markets=['1x2'], max_pages=None, proxy_url=None, browser_user_agent=None, browser_locale_timezone=None, browser_timezone_id=None, scrape_odds_history=True, target_bookmaker=None, headless=True, preview_submarkets_only=False, bookies_filter=all, period=None, checkpoint_file_path=/app/data/batch/serie-a/2016-2017.json
+2026-04-19 14:01:35,271 - ProxyManager - INFO - No proxy provided, running without proxy.
+2026-04-19 14:01:35,273 - ProxyManager - INFO - No proxy available, using direct connection.
+2026-04-19 14:01:35,273 - PlaywrightManager - INFO - Starting Playwright...
+2026-04-19 14:01:35,835 - PlaywrightManager - INFO - Playwright initialized successfully.
+2026-04-19 14:01:35,835 - ScraperApp - INFO - 
+                Scraping historical odds for sport=football, leagues=['italy-serie-a'], season=2016-2017, markets=['1x2'], scrape_odds_history=True, target_bookmaker=None, max_pages=None
+            
+2026-04-19 14:01:35,835 - OddsPortalScraper - INFO - Starting historic scraping for football - italy-serie-a - 2016-2017
+2026-04-19 14:01:35,835 - OddsPortalScraper - INFO - Base URL: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/
+2026-04-19 14:01:35,835 - OddsPortalScraper - INFO - Max pages parameter: None
+2026-04-19 14:01:35,835 - OddsPortalScraper - INFO - Setting consent cookies in browser context...
+2026-04-19 14:01:35,839 - OddsPortalScraper - INFO - Blocking OneTrust scripts to prevent bot detection...
+2026-04-19 14:01:35,842 - OddsPortalScraper - INFO - Navigating to base URL...
+2026-04-19 14:01:45,504 - OddsPortalScraper - INFO - Setting consent cookies via JavaScript...
+2026-04-19 14:01:46,914 - OddsPortalScraper - INFO - Step 1: Analyzing pagination information...
+2026-04-19 14:01:46,914 - OddsPortalScraper - INFO - Analyzing pagination information...
+2026-04-19 14:01:47,010 - OddsPortalScraper - INFO - Found 9 pagination links
+2026-04-19 14:01:47,115 - OddsPortalScraper - INFO - Raw pagination pages found: [1, 2, 3, 4, 5, 6, 7, 8]
+2026-04-19 14:01:47,115 - OddsPortalScraper - INFO - Pagination HTML showed [1, 2, 3, 4, 5, 6, 7, 8], filling to contiguous range 1..8 (8 pages)
+2026-04-19 14:01:47,115 - OddsPortalScraper - INFO - Will scrape all 8 pages (limit: 50)
+2026-04-19 14:01:47,115 - OddsPortalScraper - INFO - Final pages to scrape: [1, 2, 3, 4, 5, 6, 7, 8]
+2026-04-19 14:01:47,115 - OddsPortalScraper - INFO - Step 2: Collecting match links from all pages...
+2026-04-19 14:01:47,115 - OddsPortalScraper - INFO - Starting collection of match links from 8 pages
+2026-04-19 14:01:47,115 - OddsPortalScraper - INFO - Pages to process: [1, 2, 3, 4, 5, 6, 7, 8]
+2026-04-19 14:01:47,115 - OddsPortalScraper - INFO - Processing page 1/8: 1
+2026-04-19 14:01:47,169 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/#/page/1
+2026-04-19 14:01:58,086 - OddsPortalScraper - INFO - Scrolling page 1 to load all matches...
+2026-04-19 14:01:58,086 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:01:58,208 - BrowserHelper - INFO - Initial element count: 51
+2026-04-19 14:01:58,208 - BrowserHelper - INFO - Initial page height: 3485
+2026-04-19 14:02:00,320 - BrowserHelper - INFO - Current element count: 51 (height: 3485)
+2026-04-19 14:02:02,403 - BrowserHelper - INFO - Current element count: 51 (height: 3485)
+2026-04-19 14:02:04,534 - BrowserHelper - INFO - Current element count: 51 (height: 3485)
+2026-04-19 14:02:04,534 - BrowserHelper - INFO - Content stabilized at 51 elements. Scrolling complete.
+2026-04-19 14:02:04,534 - OddsPortalScraper - INFO - Extracting match links from page 1...
+2026-04-19 14:02:04,735 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-04-19 14:02:04,739 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:02:04,739 - OddsPortalScraper - INFO - Extracted 0 links from page 1
+2026-04-19 14:02:04,757 - OddsPortalScraper - INFO - Processing page 2/8: 2
+2026-04-19 14:02:04,796 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/#/page/2
+2026-04-19 14:02:14,455 - OddsPortalScraper - INFO - Scrolling page 2 to load all matches...
+2026-04-19 14:02:14,455 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:02:14,529 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:02:14,529 - BrowserHelper - INFO - Initial page height: 2269
+2026-04-19 14:02:16,560 - BrowserHelper - INFO - Current element count: 0 (height: 2269)
+2026-04-19 14:02:18,633 - BrowserHelper - INFO - Current element count: 50 (height: 3429)
+2026-04-19 14:02:20,739 - BrowserHelper - INFO - Current element count: 50 (height: 3429)
+2026-04-19 14:02:22,808 - BrowserHelper - INFO - Current element count: 50 (height: 3429)
+2026-04-19 14:02:24,889 - BrowserHelper - INFO - Current element count: 50 (height: 3429)
+2026-04-19 14:02:24,889 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:02:24,889 - OddsPortalScraper - INFO - Extracting match links from page 2...
+2026-04-19 14:02:25,124 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:02:25,127 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:02:25,127 - OddsPortalScraper - INFO - Extracted 0 links from page 2
+2026-04-19 14:02:25,140 - OddsPortalScraper - INFO - Processing page 3/8: 3
+2026-04-19 14:02:25,182 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/#/page/3
+2026-04-19 14:02:36,368 - OddsPortalScraper - INFO - Scrolling page 3 to load all matches...
+2026-04-19 14:02:36,368 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:02:36,422 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:02:36,422 - BrowserHelper - INFO - Initial page height: 2301
+2026-04-19 14:02:38,449 - BrowserHelper - INFO - Current element count: 0 (height: 2301)
+2026-04-19 14:02:40,531 - BrowserHelper - INFO - Current element count: 50 (height: 3581)
+2026-04-19 14:02:42,645 - BrowserHelper - INFO - Current element count: 50 (height: 3581)
+2026-04-19 14:02:44,727 - BrowserHelper - INFO - Current element count: 50 (height: 3581)
+2026-04-19 14:02:46,818 - BrowserHelper - INFO - Current element count: 50 (height: 3581)
+2026-04-19 14:02:46,818 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:02:46,818 - OddsPortalScraper - INFO - Extracting match links from page 3...
+2026-04-19 14:02:47,065 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:02:47,069 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:02:47,069 - OddsPortalScraper - INFO - Extracted 0 links from page 3
+2026-04-19 14:02:47,083 - OddsPortalScraper - INFO - Processing page 4/8: 4
+2026-04-19 14:02:47,123 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/#/page/4
+2026-04-19 14:02:56,970 - OddsPortalScraper - INFO - Scrolling page 4 to load all matches...
+2026-04-19 14:02:56,970 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:02:57,031 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:02:57,031 - BrowserHelper - INFO - Initial page height: 2285
+2026-04-19 14:02:59,064 - BrowserHelper - INFO - Current element count: 0 (height: 2285)
+2026-04-19 14:03:01,092 - BrowserHelper - INFO - Current element count: 0 (height: 2285)
+2026-04-19 14:03:03,131 - BrowserHelper - INFO - Current element count: 5 (height: 2253)
+2026-04-19 14:03:05,195 - BrowserHelper - INFO - Current element count: 5 (height: 2253)
+2026-04-19 14:03:07,230 - BrowserHelper - INFO - Current element count: 5 (height: 2253)
+2026-04-19 14:03:09,325 - BrowserHelper - INFO - Current element count: 5 (height: 2253)
+2026-04-19 14:03:09,325 - BrowserHelper - INFO - Content stabilized at 5 elements. Scrolling complete.
+2026-04-19 14:03:09,326 - OddsPortalScraper - INFO - Extracting match links from page 4...
+2026-04-19 14:03:09,408 - OddsPortalScraper - INFO - Found 5 event rows.
+2026-04-19 14:03:09,408 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:03:09,408 - OddsPortalScraper - INFO - Extracted 0 links from page 4
+2026-04-19 14:03:09,422 - OddsPortalScraper - INFO - Processing page 5/8: 5
+2026-04-19 14:03:09,462 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/#/page/5
+2026-04-19 14:03:19,538 - OddsPortalScraper - INFO - Scrolling page 5 to load all matches...
+2026-04-19 14:03:19,538 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:03:19,601 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:03:19,601 - BrowserHelper - INFO - Initial page height: 2285
+2026-04-19 14:03:21,627 - BrowserHelper - INFO - Current element count: 0 (height: 2285)
+2026-04-19 14:03:23,653 - BrowserHelper - INFO - Current element count: 0 (height: 2285)
+2026-04-19 14:03:25,690 - BrowserHelper - INFO - Current element count: 5 (height: 2253)
+2026-04-19 14:03:27,758 - BrowserHelper - INFO - Current element count: 5 (height: 2253)
+2026-04-19 14:03:29,792 - BrowserHelper - INFO - Current element count: 5 (height: 2253)
+2026-04-19 14:03:31,825 - BrowserHelper - INFO - Current element count: 5 (height: 2253)
+2026-04-19 14:03:31,825 - BrowserHelper - INFO - Content stabilized at 5 elements. Scrolling complete.
+2026-04-19 14:03:31,825 - OddsPortalScraper - INFO - Extracting match links from page 5...
+2026-04-19 14:03:31,918 - OddsPortalScraper - INFO - Found 5 event rows.
+2026-04-19 14:03:31,918 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:03:31,918 - OddsPortalScraper - INFO - Extracted 0 links from page 5
+2026-04-19 14:03:31,931 - OddsPortalScraper - INFO - Processing page 6/8: 6
+2026-04-19 14:03:31,972 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/#/page/6
+2026-04-19 14:03:41,066 - OddsPortalScraper - INFO - Scrolling page 6 to load all matches...
+2026-04-19 14:03:41,066 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:03:41,133 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:03:41,134 - BrowserHelper - INFO - Initial page height: 2285
+2026-04-19 14:03:43,159 - BrowserHelper - INFO - Current element count: 0 (height: 2285)
+2026-04-19 14:03:45,185 - BrowserHelper - INFO - Current element count: 0 (height: 2285)
+2026-04-19 14:03:47,257 - BrowserHelper - INFO - Current element count: 50 (height: 3493)
+2026-04-19 14:03:49,365 - BrowserHelper - INFO - Current element count: 50 (height: 3493)
+2026-04-19 14:03:51,493 - BrowserHelper - INFO - Current element count: 50 (height: 3493)
+2026-04-19 14:03:53,565 - BrowserHelper - INFO - Current element count: 50 (height: 3493)
+2026-04-19 14:03:53,565 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:03:53,565 - OddsPortalScraper - INFO - Extracting match links from page 6...
+2026-04-19 14:03:53,788 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:03:53,792 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:03:53,792 - OddsPortalScraper - INFO - Extracted 0 links from page 6
+2026-04-19 14:03:53,805 - OddsPortalScraper - INFO - Processing page 7/8: 7
+2026-04-19 14:03:53,850 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/#/page/7
+2026-04-19 14:04:04,808 - OddsPortalScraper - INFO - Scrolling page 7 to load all matches...
+2026-04-19 14:04:04,808 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:04:04,876 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:04:04,876 - BrowserHelper - INFO - Initial page height: 2285
+2026-04-19 14:04:06,905 - BrowserHelper - INFO - Current element count: 0 (height: 2285)
+2026-04-19 14:04:08,979 - BrowserHelper - INFO - Current element count: 50 (height: 3493)
+2026-04-19 14:04:11,088 - BrowserHelper - INFO - Current element count: 50 (height: 3493)
+2026-04-19 14:04:13,207 - BrowserHelper - INFO - Current element count: 50 (height: 3493)
+2026-04-19 14:04:15,295 - BrowserHelper - INFO - Current element count: 50 (height: 3493)
+2026-04-19 14:04:15,296 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:04:15,296 - OddsPortalScraper - INFO - Extracting match links from page 7...
+2026-04-19 14:04:15,527 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:04:15,530 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:04:15,530 - OddsPortalScraper - INFO - Extracted 0 links from page 7
+2026-04-19 14:04:15,542 - OddsPortalScraper - INFO - Processing page 8/8: 8
+2026-04-19 14:04:15,584 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/italy/serie-a-2016-2017/results/#/page/8
+2026-04-19 14:04:25,501 - OddsPortalScraper - INFO - Scrolling page 8 to load all matches...
+2026-04-19 14:04:25,501 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:04:25,567 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:04:25,567 - BrowserHelper - INFO - Initial page height: 2285
+2026-04-19 14:04:27,589 - BrowserHelper - INFO - Current element count: 0 (height: 2285)
+2026-04-19 14:04:29,644 - BrowserHelper - INFO - Current element count: 30 (height: 2713)
+2026-04-19 14:04:31,741 - BrowserHelper - INFO - Current element count: 30 (height: 2713)
+2026-04-19 14:04:33,801 - BrowserHelper - INFO - Current element count: 30 (height: 2713)
+2026-04-19 14:04:35,862 - BrowserHelper - INFO - Current element count: 30 (height: 2713)
+2026-04-19 14:04:35,862 - BrowserHelper - INFO - Content stabilized at 30 elements. Scrolling complete.
+2026-04-19 14:04:35,862 - OddsPortalScraper - INFO - Extracting match links from page 8...
+2026-04-19 14:04:36,038 - OddsPortalScraper - INFO - Found 30 event rows.
+2026-04-19 14:04:36,040 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:04:36,040 - OddsPortalScraper - INFO - Extracted 0 links from page 8
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO - Collection Summary:
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO -    - Total pages processed: 8
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO -    - Successful pages: 8
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO -    - Failed pages: 0
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO -    - Total links found: 0
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO -    - Unique links: 0
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO - Step 3: Extracting odds from collected match links...
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO - Total unique matches to process: 0
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO - Starting to scrape odds for 0 match links...
+2026-04-19 14:04:36,052 - OddsPortalScraper - INFO - Scraping complete: 0/0 successful (0.0%)
+2026-04-19 14:04:36,052 - PlaywrightManager - INFO - Cleaning up Playwright resources...
+2026-04-19 14:04:36,152 - PlaywrightManager - INFO - Playwright resources cleanup complete.
+2026-04-19 14:04:36,153 - oddsharvester.cli.commands.historic - ERROR - Scraper did not return valid data.

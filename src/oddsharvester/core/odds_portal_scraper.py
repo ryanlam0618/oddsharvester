@@ -1,14 +1,18 @@
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, date, datetime
 from enum import Enum
 import random
+import re
+from typing import Any
 
+from bs4 import BeautifulSoup
 from playwright.async_api import Page
 
-from oddsharvester.core.base_scraper import BaseScraper
-from oddsharvester.core.scrape_result import ScrapeResult
+from oddsharvester.core.base_scraper import BaseScraper, _parse_date_header
+from oddsharvester.core.scrape_result import ScrapeResult, ScrapeStats
 from oddsharvester.core.url_builder import URLBuilder
 from oddsharvester.utils.bookies_filter_enum import BookiesFilter
+from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
 from oddsharvester.utils.constants import (
     DEFAULT_REQUEST_DELAY_S,
     GOTO_TIMEOUT_LONG_MS,
@@ -18,6 +22,20 @@ from oddsharvester.utils.constants import (
     PAGE_COLLECTION_DELAY_MAX_MS,
     PAGE_COLLECTION_DELAY_MIN_MS,
 )
+from oddsharvester.utils.utils import clean_html_text
+
+
+@dataclass
+class MatchDataResult:
+    """Result of extracting match data from results pages."""
+
+    matches: list[dict[str, Any]] = field(default_factory=list)
+    successful_pages: int = 0
+    failed_pages: list[int] = field(default_factory=list)
+
+    @property
+    def total_pages(self) -> int:
+        return self.successful_pages + len(self.failed_pages)
 
 
 @dataclass
@@ -150,7 +168,6 @@ class OddsPortalScraper(BaseScraper):
         pages_to_scrape = await self._get_pagination_info(page=current_page, max_pages=max_pages)
 
         # Parse season years for season-aware date filtering in link collection
-        import re
         season_year: int | None = None
         season_end_year: int | None = None
         m = re.match(r"^(\d{4})-(\d{4})$", season)
@@ -158,38 +175,47 @@ class OddsPortalScraper(BaseScraper):
             season_year = int(m.group(1))
             season_end_year = int(m.group(2))
 
-        # Collect match links from all pages
-        self.logger.info("Step 2: Collecting match links from all pages...")
-        link_result = await self._collect_match_links(
+        # Extract match data directly from results pages (Option B: bypasses h2h pages)
+        # This solves the issue where h2h pages always show the most recent match
+        self.logger.info("Step 2: Extracting match data directly from results pages...")
+        match_result = await self._extract_matches_from_results_page(
             base_url=base_url,
             pages_to_scrape=pages_to_scrape,
             season_year=season_year,
             season_end_year=season_end_year,
-        )
-
-        if link_result.failed_pages:
-            self.logger.warning(f"Failed to collect links from pages: {link_result.failed_pages}")
-
-        # Extract odds from all collected links
-        self.logger.info("Step 3: Extracting odds from collected match links...")
-        self.logger.info(f"Total unique matches to process: {len(link_result.links)}")
-
-        return await self.extract_match_odds(
             sport=sport,
-            match_links=link_result.links,
-            markets=markets,
-            scrape_odds_history=scrape_odds_history,
-            target_bookmaker=target_bookmaker,
-            preview_submarkets_only=self.preview_submarkets_only,
-            bookies_filter=bookies_filter,
-            period=period,
-            request_delay=request_delay,
-            checkpoint_file_path=checkpoint_file_path,
-            checkpoint_storage_type=checkpoint_storage_type,
-            checkpoint_storage_format=checkpoint_storage_format,
-            season_year=season_year,
-            season_end_year=season_end_year,
         )
+
+        if match_result.failed_pages:
+            self.logger.warning(f"Failed to extract from pages: {match_result.failed_pages}")
+
+        self.logger.info(f"Extracted {len(match_result.matches)} matches from results pages")
+
+        # Save matches to checkpoint file
+        if checkpoint_file_path and match_result.matches:
+            try:
+                from oddsharvester.storage.storage_manager import store_data
+                store_data(
+                    storage_type=checkpoint_storage_type,
+                    data=match_result.matches,
+                    storage_format=checkpoint_storage_format,
+                    file_path=checkpoint_file_path,
+                )
+                self.logger.info(f"Saved {len(match_result.matches)} matches to {checkpoint_file_path}")
+            except Exception as e:
+                self.logger.error(f"Failed to save checkpoint: {e}")
+
+        # Build ScrapeResult from extracted matches
+        result = ScrapeResult(stats=ScrapeStats(total_urls=len(match_result.matches)))
+        result.success = match_result.matches
+        result.stats.successful = len(match_result.matches)
+
+        self.logger.info(
+            f"Scraping complete: {result.stats.successful}/{result.stats.total_urls} successful "
+            f"({result.stats.success_rate:.1f}%)"
+        )
+
+        return result
 
     async def scrape_upcoming(
         self,
@@ -429,7 +455,6 @@ class OddsPortalScraper(BaseScraper):
         Returns:
             LinkCollectionResult: Contains links found and tracking of successful/failed pages.
         """
-        import re
 
         if season_year is None or season_end_year is None:
             # Try to extract season from URL: .../laliga-2016-2017/...
@@ -510,3 +535,385 @@ class OddsPortalScraper(BaseScraper):
             self.logger.warning(f"Failed to collect links from pages: {result.failed_pages}")
 
         return result
+
+    async def _extract_matches_from_results_page(
+        self,
+        base_url: str,
+        pages_to_scrape: list[int],
+        season_year: int | None = None,
+        season_end_year: int | None = None,
+        sport: str = "football",
+    ) -> MatchDataResult:
+        """
+        Extract match data directly from results page event rows.
+
+        This method extracts all match data (teams, scores, date, odds) directly
+        from the results page without visiting individual h2h pages. This solves
+        the problem of h2h pages always showing the most recent match instead
+        of the specific season's match.
+
+        Args:
+            base_url (str): The base URL of the historic matches.
+            pages_to_scrape (List[int]): Pages to scrape.
+            season_year (Optional[int]): Start year of the season (e.g. 2016 for "2016-2017").
+            season_end_year (Optional[int]): End year of the season (e.g. 2017 for "2016-2017").
+            sport (str): The sport being scraped (default: football).
+
+        Returns:
+            MatchDataResult: Contains match data and tracking of successful/failed pages.
+        """
+        from bs4 import BeautifulSoup
+        from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
+
+        if season_year is None or season_end_year is None:
+            # Try to extract season from URL: .../laliga-2016-2017/...
+            m = re.search(r"/-(\d{4})-\d{4}/", base_url)
+            if m:
+                season_year = int(m.group(1))
+                season_end_year = season_year + 1
+
+        self.logger.info(f"Starting extraction of match data from {len(pages_to_scrape)} pages")
+        if season_year is not None:
+            self.logger.info(f"Season filtering: {season_year}-{season_end_year}")
+        self.logger.info(f"Pages to process: {pages_to_scrape}")
+
+        result = MatchDataResult()
+        all_matches: list[dict[str, Any]] = []
+
+        # Get timezone for date parsing
+        tz_name = getattr(self.playwright_manager, "timezone_id", None)
+
+        for i, page_number in enumerate(pages_to_scrape, 1):
+            self.logger.info(f"Processing page {i}/{len(pages_to_scrape)}: {page_number}")
+            tab = None
+
+            try:
+                tab = await self.playwright_manager.context.new_page()
+
+                # Block OneTrust scripts BEFORE navigation on new tab
+                await self.playwright_manager.block_one_trust_for_page(tab)
+
+                self.logger.debug(f"Created new tab for page {page_number}")
+
+                page_url = f"{base_url}#/page/{page_number}"
+                self.logger.info(f"Navigating to: {page_url}")
+                await tab.goto(page_url, timeout=GOTO_TIMEOUT_MS, wait_until="domcontentloaded")
+                delay = random.randint(PAGE_COLLECTION_DELAY_MIN_MS, PAGE_COLLECTION_DELAY_MAX_MS)  # noqa: S311
+                self.logger.debug(f"Waiting {delay}ms before processing...")
+                await tab.wait_for_timeout(delay)
+
+                self.logger.info(f"Scrolling page {page_number} to load all matches...")
+                scroll_success = await self.browser_helper.scroll_until_loaded(
+                    page=tab,
+                    timeout=30,
+                    scroll_pause_time=2,
+                    max_scroll_attempts=3,
+                    content_check_selector="div[class*='eventRow']",
+                )
+
+                if scroll_success:
+                    self.logger.debug(f"Successfully scrolled page {page_number}")
+                else:
+                    self.logger.warning(f"Scrolling may not have completed for page {page_number}")
+
+                # Extract match data from this page
+                self.logger.info(f"Extracting match data from page {page_number}...")
+                matches = await self._extract_match_data_from_event_rows(
+                    page=tab,
+                    sport=sport,
+                    season_year=season_year,
+                    season_end_year=season_end_year,
+                    tz_name=tz_name,
+                )
+                all_matches.extend(matches)
+                result.successful_pages += 1
+                self.logger.info(f"Extracted {len(matches)} matches from page {page_number}")
+
+            except Exception as e:
+                result.failed_pages.append(page_number)
+                self.logger.error(f"Error processing page {page_number}: {e}")
+
+            finally:
+                if tab:
+                    await tab.close()
+                    self.logger.debug(f"Closed tab for page {page_number}")
+
+        result.matches = all_matches
+        self.logger.info("Extraction Summary:")
+        self.logger.info(f"   - Total pages processed: {len(pages_to_scrape)}")
+        self.logger.info(f"   - Successful pages: {result.successful_pages}")
+        self.logger.info(f"   - Failed pages: {len(result.failed_pages)}")
+        self.logger.info(f"   - Total matches extracted: {len(all_matches)}")
+
+        if result.failed_pages:
+            self.logger.warning(f"Failed to extract from pages: {result.failed_pages}")
+
+        return result
+
+    async def _extract_match_data_from_event_rows(
+        self,
+        page: Page,
+        sport: str,
+        season_year: int | None = None,
+        season_end_year: int | None = None,
+        tz_name: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Extract match data from event rows on a results page.
+
+        Args:
+            page (Page): A Playwright Page instance.
+            sport (str): The sport being scraped.
+            season_year (Optional[int]): Start year of the season.
+            season_end_year (Optional[int]): End year of the season.
+            tz_name (Optional[str]): Timezone name for date parsing.
+
+        Returns:
+            List[Dict]: List of match data dictionaries.
+        """
+        from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
+        from oddsharvester.utils.utils import clean_html_text
+
+        try:
+            html_content = await page.content()
+            soup = BeautifulSoup(html_content, "lxml")
+            event_rows = soup.find_all(class_=re.compile(OddsPortalSelectors.EVENT_ROW_CLASS_PATTERN))
+            self.logger.info(f"Found {len(event_rows)} event rows on page")
+
+            matches: list[dict[str, Any]] = []
+            current_row_date = None
+            filtered_out_count = 0
+            seen_h2h: set[str] = set()  # Deduplicate by h2h URL
+
+            for row in event_rows:
+                # Parse date header if present
+                header_el = row.find(attrs={"data-testid": "date-header"})
+                if header_el is not None:
+                    header_text = header_el.get_text(" ", strip=True)
+                    parsed = _parse_date_header(header_text, tz_name=tz_name, season_year=season_year)
+                    if parsed is not None:
+                        current_row_date = parsed
+
+                # Season range filtering
+                if season_year is not None and season_end_year is not None and current_row_date is not None:
+                    season_start = date(season_year, 8, 1)
+                    season_end = date(season_end_year, 5, 31)
+                    if not (season_start <= current_row_date <= season_end):
+                        filtered_out_count += 1
+                        continue
+
+                # Extract match data from this row
+                match_data = self._parse_event_row_for_match_data(
+                    row=row,
+                    sport=sport,
+                    match_date=current_row_date,
+                )
+
+                if match_data and match_data.get("h2h_url"):
+                    # Deduplicate by h2h URL
+                    h2h = match_data["h2h_url"]
+                    if h2h not in seen_h2h:
+                        seen_h2h.add(h2h)
+                        matches.append(match_data)
+
+            if filtered_out_count > 0:
+                self.logger.info(
+                    f"Filtered out {filtered_out_count} rows outside season range "
+                    f"({season_year}-{season_end_year})"
+                )
+
+            self.logger.info(f"Extracted {len(matches)} unique matches from event rows")
+            return matches
+
+        except Exception as e:
+            self.logger.error(f"Error extracting match data from event rows: {e}")
+            return []
+
+    def _parse_event_row_for_match_data(
+        self,
+        row,
+        sport: str,
+        match_date: date | None,
+    ) -> dict[str, Any] | None:
+        """
+        Parse a single event row to extract match data.
+
+        Args:
+            row: BeautifulSoup element representing an event row.
+            sport (str): The sport being scraped.
+            match_date (Optional[date]): The date parsed from date header.
+
+        Returns:
+            Optional[Dict]: Match data dictionary or None if parsing fails.
+        """
+        try:
+            # Get h2h link
+            h2h_link = row.find("a", href=re.compile(r"/football/h2h/"))
+            if not h2h_link:
+                return None
+
+            h2h_href = h2h_link.get("href", "")
+            h2h_url = f"{ODDSPORTAL_BASE_URL}{h2h_href}" if not h2h_href.startswith("http") else h2h_href
+
+            # Extract teams and scores from participants
+            # Structure: <a title="TeamName"><p class="participant-name">TeamName</p><div>Score</div></a>
+            participants_el = row.find(attrs={"data-testid": "event-participants"})
+            home_team = None
+            away_team = None
+            home_score = None
+            away_score = None
+
+            if participants_el:
+                # Find all team <a> elements (they have title attribute)
+                team_links = participants_el.find_all("a", title=True)
+                for i, team_link in enumerate(team_links[:2]):  # Take first 2 teams
+                    team_name = team_link.get("title", "")
+                    if not team_name:
+                        # Fallback to participant-name class
+                        name_el = team_link.find(class_="participant-name")
+                        if name_el:
+                            team_name = name_el.get_text(strip=True)
+                    
+                    # Extract score from the team link (it's in a sibling div)
+                    # The score div is a direct child of the <a> element, after <p class="participant-name">
+                    score_div = team_link.find("div", class_=re.compile(r"font-bold"))
+                    if score_div:
+                        try:
+                            score = int(score_div.get_text(strip=True))
+                        except ValueError:
+                            score = None
+                    else:
+                        score = None
+                    
+                    if i == 0:
+                        home_team = team_name
+                        home_score = score
+                    elif i == 1:
+                        away_team = team_name
+                        away_score = score
+
+            # Alternative: extract scores from the score separator div
+            # Structure: <div class="score-center"><div>3</div><a>–</a><div>1</div></div>
+            if home_score is None or away_score is None:
+                score_center = participants_el.find("div", class_=re.compile(r"relative"))
+                if score_center:
+                    score_text = score_center.get_text(strip=True)
+                    score_match = re.search(r"(\d+)[\s\-–]+(\d+)", score_text)
+                    if score_match:
+                        if home_score is None:
+                            home_score = int(score_match.group(1))
+                        if away_score is None:
+                            away_score = int(score_match.group(2))
+
+            # Extract basic odds (1/X/2) from odd containers
+            odds_1 = None
+            odds_x = None
+            odds_2 = None
+
+            # Find odd containers - they typically follow the participants div
+            # The odds are in the secondary header or in odd-specific divs
+            secondary_header = row.find(attrs={"data-testid": "secondary-header"})
+            if secondary_header:
+                # Find all odd values - they are usually <p> or <div> elements after the date
+                odd_elements = secondary_header.find_all("p")
+                # Or find divs with specific classes
+                if not odd_elements:
+                    odd_elements = row.find_all(attrs={"data-testid": re.compile(r"odd-container")})
+                
+                odd_values = []
+                for el in odd_elements:
+                    text = el.get_text(strip=True)
+                    try:
+                        val = float(text)
+                        odd_values.append(val)
+                    except ValueError:
+                        continue
+                
+                if len(odd_values) >= 3:
+                    odds_1 = odd_values[0]
+                    odds_x = odd_values[1]
+                    odds_2 = odd_values[2]
+
+            # Fallback: look for odds in the row text
+            # The text contains odds like "1.38 | 6.20 | 9.80"
+            if odds_1 is None:
+                row_text = row.get_text(" ")
+                # Find all decimal numbers that look like odds (between 1.0 and 50.0)
+                odd_pattern = re.findall(r"\b(\d+\.\d+)\b", row_text)
+                valid_odds = [float(o) for o in odd_pattern if 1.0 <= float(o) <= 50.0]
+                if len(valid_odds) >= 3:
+                    # First 3 odds are typically 1, X, 2
+                    odds_1 = valid_odds[0]
+                    odds_x = valid_odds[1]
+                    odds_2 = valid_odds[2]
+
+            # Get league name from breadcrumb
+            league_name = None
+            breadcrumb = row.find(attrs={"data-testid": "header-tournament-item"})
+            if breadcrumb:
+                league_name = breadcrumb.get_text(strip=True)
+
+            # Get match status (Finished, Live, etc.)
+            status = None
+            status_el = row.find(text=re.compile(r"^(Finished|Live|Cancelled|Postponed|In Progress)"))
+            if status_el:
+                status = status_el.strip()
+            else:
+                # Try to find status in time-item div
+                time_item = row.find(attrs={"data-testid": "time-item"})
+                if time_item:
+                    time_text = time_item.get_text(strip=True)
+                    if "Finished" in time_text:
+                        status = "Finished"
+                    elif "Live" in time_text:
+                        status = "Live"
+
+            # Build match data dictionary
+            match_data: dict[str, Any] = {
+                "scraped_date": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S %Z"),
+                "sport": sport,
+                "match_link": h2h_url,
+                "h2h_url": h2h_url,
+            }
+
+            # Add date if available
+            if match_date:
+                match_data["match_date"] = match_date.strftime("%Y-%m-%d")
+
+            # Add teams
+            if home_team:
+                match_data["home_team"] = home_team
+            if away_team:
+                match_data["away_team"] = away_team
+
+            # Add scores
+            if home_score is not None:
+                match_data["home_score"] = home_score
+            if away_score is not None:
+                match_data["away_score"] = away_score
+
+            # Add league
+            if league_name:
+                match_data["league_name"] = league_name
+
+            # Add basic odds as a sub-dictionary
+            odds_data = {}
+            if odds_1 is not None:
+                odds_data["1"] = odds_1
+            if odds_x is not None:
+                odds_data["X"] = odds_x
+            if odds_2 is not None:
+                odds_data["2"] = odds_2
+
+            if odds_data:
+                match_data["odds"] = odds_data
+
+            # Add status
+            if status:
+                match_data["status"] = status
+
+            return match_data
+
+        except Exception as e:
+            self.logger.debug(f"Error parsing event row: {e}")
+            return None

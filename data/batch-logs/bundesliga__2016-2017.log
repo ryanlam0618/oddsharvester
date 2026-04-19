@@ -1,0 +1,135 @@
+2026-04-19 14:07:16,248 - root - INFO - Logging initialized. Log level: INFO (No file output)
+2026-04-19 14:07:16,251 - oddsharvester.utils.utils - INFO - No period specified, using default for football: 'full_time'
+2026-04-19 14:07:16,251 - ScraperApp - INFO - Starting scraper with parameters: command=scrape_historic, match_links=None, sport=football, date=None, leagues=['germany-bundesliga'], season=2016-2017, markets=['1x2'], max_pages=None, proxy_url=None, browser_user_agent=None, browser_locale_timezone=None, browser_timezone_id=None, scrape_odds_history=True, target_bookmaker=None, headless=True, preview_submarkets_only=False, bookies_filter=all, period=None, checkpoint_file_path=/app/data/batch/bundesliga/2016-2017.json
+2026-04-19 14:07:16,251 - ProxyManager - INFO - No proxy provided, running without proxy.
+2026-04-19 14:07:16,253 - ProxyManager - INFO - No proxy available, using direct connection.
+2026-04-19 14:07:16,253 - PlaywrightManager - INFO - Starting Playwright...
+2026-04-19 14:07:16,808 - PlaywrightManager - INFO - Playwright initialized successfully.
+2026-04-19 14:07:16,808 - ScraperApp - INFO - 
+                Scraping historical odds for sport=football, leagues=['germany-bundesliga'], season=2016-2017, markets=['1x2'], scrape_odds_history=True, target_bookmaker=None, max_pages=None
+            
+2026-04-19 14:07:16,809 - OddsPortalScraper - INFO - Starting historic scraping for football - germany-bundesliga - 2016-2017
+2026-04-19 14:07:16,809 - OddsPortalScraper - INFO - Base URL: https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/
+2026-04-19 14:07:16,809 - OddsPortalScraper - INFO - Max pages parameter: None
+2026-04-19 14:07:16,809 - OddsPortalScraper - INFO - Setting consent cookies in browser context...
+2026-04-19 14:07:16,815 - OddsPortalScraper - INFO - Blocking OneTrust scripts to prevent bot detection...
+2026-04-19 14:07:16,818 - OddsPortalScraper - INFO - Navigating to base URL...
+2026-04-19 14:07:25,482 - OddsPortalScraper - INFO - Setting consent cookies via JavaScript...
+2026-04-19 14:07:27,013 - OddsPortalScraper - INFO - Step 1: Analyzing pagination information...
+2026-04-19 14:07:27,013 - OddsPortalScraper - INFO - Analyzing pagination information...
+2026-04-19 14:07:27,109 - OddsPortalScraper - INFO - Found 8 pagination links
+2026-04-19 14:07:27,209 - OddsPortalScraper - INFO - Raw pagination pages found: [1, 2, 3, 4, 5, 6, 7]
+2026-04-19 14:07:27,210 - OddsPortalScraper - INFO - Pagination HTML showed [1, 2, 3, 4, 5, 6, 7], filling to contiguous range 1..7 (7 pages)
+2026-04-19 14:07:27,210 - OddsPortalScraper - INFO - Will scrape all 7 pages (limit: 50)
+2026-04-19 14:07:27,210 - OddsPortalScraper - INFO - Final pages to scrape: [1, 2, 3, 4, 5, 6, 7]
+2026-04-19 14:07:27,210 - OddsPortalScraper - INFO - Step 2: Collecting match links from all pages...
+2026-04-19 14:07:27,210 - OddsPortalScraper - INFO - Starting collection of match links from 7 pages
+2026-04-19 14:07:27,210 - OddsPortalScraper - INFO - Pages to process: [1, 2, 3, 4, 5, 6, 7]
+2026-04-19 14:07:27,210 - OddsPortalScraper - INFO - Processing page 1/7: 1
+2026-04-19 14:07:27,267 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/#/page/1
+2026-04-19 14:07:38,574 - OddsPortalScraper - INFO - Scrolling page 1 to load all matches...
+2026-04-19 14:07:38,574 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:07:38,691 - BrowserHelper - INFO - Initial element count: 51
+2026-04-19 14:07:38,691 - BrowserHelper - INFO - Initial page height: 3557
+2026-04-19 14:07:40,828 - BrowserHelper - INFO - Current element count: 51 (height: 3557)
+2026-04-19 14:07:42,916 - BrowserHelper - INFO - Current element count: 51 (height: 3557)
+2026-04-19 14:07:45,008 - BrowserHelper - INFO - Current element count: 51 (height: 3557)
+2026-04-19 14:07:45,008 - BrowserHelper - INFO - Content stabilized at 51 elements. Scrolling complete.
+2026-04-19 14:07:45,008 - OddsPortalScraper - INFO - Extracting match links from page 1...
+2026-04-19 14:07:45,260 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-04-19 14:07:45,263 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:07:45,263 - OddsPortalScraper - INFO - Extracted 0 links from page 1
+2026-04-19 14:07:45,279 - OddsPortalScraper - INFO - Processing page 2/7: 2
+2026-04-19 14:07:45,318 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/#/page/2
+2026-04-19 14:07:56,704 - OddsPortalScraper - INFO - Scrolling page 2 to load all matches...
+2026-04-19 14:07:56,704 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:07:56,823 - BrowserHelper - INFO - Initial element count: 51
+2026-04-19 14:07:56,823 - BrowserHelper - INFO - Initial page height: 3517
+2026-04-19 14:07:58,937 - BrowserHelper - INFO - Current element count: 51 (height: 3517)
+2026-04-19 14:08:01,021 - BrowserHelper - INFO - Current element count: 51 (height: 3517)
+2026-04-19 14:08:03,115 - BrowserHelper - INFO - Current element count: 51 (height: 3517)
+2026-04-19 14:08:03,115 - BrowserHelper - INFO - Content stabilized at 51 elements. Scrolling complete.
+2026-04-19 14:08:03,115 - OddsPortalScraper - INFO - Extracting match links from page 2...
+2026-04-19 14:08:03,350 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-04-19 14:08:03,353 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:08:03,353 - OddsPortalScraper - INFO - Extracted 0 links from page 2
+2026-04-19 14:08:03,370 - OddsPortalScraper - INFO - Processing page 3/7: 3
+2026-04-19 14:08:03,410 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/#/page/3
+2026-04-19 14:08:13,531 - OddsPortalScraper - INFO - Scrolling page 3 to load all matches...
+2026-04-19 14:08:13,531 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:08:13,595 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:08:13,595 - BrowserHelper - INFO - Initial page height: 2285
+2026-04-19 14:08:15,685 - BrowserHelper - INFO - Current element count: 51 (height: 3613)
+2026-04-19 14:08:17,811 - BrowserHelper - INFO - Current element count: 51 (height: 3613)
+2026-04-19 14:08:19,901 - BrowserHelper - INFO - Current element count: 51 (height: 3613)
+2026-04-19 14:08:21,990 - BrowserHelper - INFO - Current element count: 51 (height: 3613)
+2026-04-19 14:08:21,991 - BrowserHelper - INFO - Content stabilized at 51 elements. Scrolling complete.
+2026-04-19 14:08:21,991 - OddsPortalScraper - INFO - Extracting match links from page 3...
+2026-04-19 14:08:22,218 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-04-19 14:08:22,222 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:08:22,222 - OddsPortalScraper - INFO - Extracted 0 links from page 3
+2026-04-19 14:08:22,237 - OddsPortalScraper - INFO - Processing page 4/7: 4
+2026-04-19 14:08:22,282 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/#/page/4
+2026-04-19 14:08:32,287 - OddsPortalScraper - INFO - Scrolling page 4 to load all matches...
+2026-04-19 14:08:32,287 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:08:32,409 - BrowserHelper - INFO - Initial element count: 51
+2026-04-19 14:08:32,409 - BrowserHelper - INFO - Initial page height: 3565
+2026-04-19 14:08:34,531 - BrowserHelper - INFO - Current element count: 51 (height: 3565)
+2026-04-19 14:08:36,628 - BrowserHelper - INFO - Current element count: 51 (height: 3565)
+2026-04-19 14:08:38,798 - BrowserHelper - INFO - Current element count: 51 (height: 3565)
+2026-04-19 14:08:38,799 - BrowserHelper - INFO - Content stabilized at 51 elements. Scrolling complete.
+2026-04-19 14:08:38,799 - OddsPortalScraper - INFO - Extracting match links from page 4...
+2026-04-19 14:08:39,021 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-04-19 14:08:39,025 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:08:39,025 - OddsPortalScraper - INFO - Extracted 0 links from page 4
+2026-04-19 14:08:39,042 - OddsPortalScraper - INFO - Processing page 5/7: 5
+2026-04-19 14:08:39,081 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/#/page/5
+2026-04-19 14:08:49,503 - OddsPortalScraper - INFO - Scrolling page 5 to load all matches...
+2026-04-19 14:08:49,503 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:08:49,568 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:08:49,568 - BrowserHelper - INFO - Initial page height: 2301
+2026-04-19 14:08:51,620 - BrowserHelper - INFO - Current element count: 50 (height: 3605)
+2026-04-19 14:08:53,725 - BrowserHelper - INFO - Current element count: 50 (height: 3605)
+2026-04-19 14:08:55,806 - BrowserHelper - INFO - Current element count: 50 (height: 3605)
+2026-04-19 14:08:57,897 - BrowserHelper - INFO - Current element count: 50 (height: 3605)
+2026-04-19 14:08:57,897 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:08:57,897 - OddsPortalScraper - INFO - Extracting match links from page 5...
+2026-04-19 14:08:58,130 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:08:58,134 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:08:58,134 - OddsPortalScraper - INFO - Extracted 0 links from page 5
+2026-04-19 14:08:58,148 - OddsPortalScraper - INFO - Processing page 6/7: 6
+2026-04-19 14:08:58,186 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/#/page/6
+2026-04-19 14:09:08,423 - OddsPortalScraper - INFO - Scrolling page 6 to load all matches...
+2026-04-19 14:09:08,423 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:09:08,491 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:09:08,491 - BrowserHelper - INFO - Initial page height: 2285
+2026-04-19 14:09:10,571 - BrowserHelper - INFO - Current element count: 50 (height: 3589)
+2026-04-19 14:09:12,699 - BrowserHelper - INFO - Current element count: 50 (height: 3589)
+2026-04-19 14:09:14,801 - BrowserHelper - INFO - Current element count: 50 (height: 3589)
+2026-04-19 14:09:16,885 - BrowserHelper - INFO - Current element count: 50 (height: 3589)
+2026-04-19 14:09:16,885 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:09:16,885 - OddsPortalScraper - INFO - Extracting match links from page 6...
+2026-04-19 14:09:17,098 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:09:17,101 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:09:17,101 - OddsPortalScraper - INFO - Extracted 0 links from page 6
+2026-04-19 14:09:17,115 - OddsPortalScraper - INFO - Processing page 7/7: 7
+2026-04-19 14:09:17,155 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/#/page/7
+2026-04-19 14:09:27,159 - OddsPortalScraper - ERROR - Error processing page 7: Page.goto: Timeout 10000ms exceeded.
+Call log:
+  - navigating to "https://www.oddsportal.com/football/germany/bundesliga-2016-2017/results/#/page/7", waiting until "domcontentloaded"
+
+2026-04-19 14:09:27,165 - OddsPortalScraper - INFO - Collection Summary:
+2026-04-19 14:09:27,165 - OddsPortalScraper - INFO -    - Total pages processed: 7
+2026-04-19 14:09:27,166 - OddsPortalScraper - INFO -    - Successful pages: 6
+2026-04-19 14:09:27,166 - OddsPortalScraper - INFO -    - Failed pages: 1
+2026-04-19 14:09:27,166 - OddsPortalScraper - INFO -    - Total links found: 0
+2026-04-19 14:09:27,166 - OddsPortalScraper - INFO -    - Unique links: 0
+2026-04-19 14:09:27,166 - OddsPortalScraper - WARNING - Failed to collect links from pages: [7]
+2026-04-19 14:09:27,166 - OddsPortalScraper - WARNING - Failed to collect links from pages: [7]
+2026-04-19 14:09:27,166 - OddsPortalScraper - INFO - Step 3: Extracting odds from collected match links...
+2026-04-19 14:09:27,166 - OddsPortalScraper - INFO - Total unique matches to process: 0
+2026-04-19 14:09:27,166 - OddsPortalScraper - INFO - Starting to scrape odds for 0 match links...
+2026-04-19 14:09:27,166 - OddsPortalScraper - INFO - Scraping complete: 0/0 successful (0.0%)
+2026-04-19 14:09:27,166 - PlaywrightManager - INFO - Cleaning up Playwright resources...
+2026-04-19 14:09:27,286 - PlaywrightManager - INFO - Playwright resources cleanup complete.
+2026-04-19 14:09:27,287 - oddsharvester.cli.commands.historic - ERROR - Scraper did not return valid data.

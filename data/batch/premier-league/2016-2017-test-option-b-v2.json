@@ -1,0 +1,870 @@
+[
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/everton-KluSTr9s/#SGPa5fvr",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/everton-KluSTr9s/#SGPa5fvr",
+        "match_date": "2017-05-21",
+        "home_team": "Arsenal",
+        "away_team": "Everton",
+        "home_score": 3,
+        "away_score": 1,
+        "league_name": "Premier League 2016/2017",
+        "odds": {
+            "1": 1.38,
+            "X": 1.38,
+            "2": 6.2
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/leicester-KrrdAMyI/#UuMG1Cw7",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/leicester-KrrdAMyI/#UuMG1Cw7",
+        "match_date": "2017-05-21",
+        "home_team": "Leicester",
+        "away_team": "Bournemouth",
+        "home_score": 1,
+        "away_score": 1,
+        "odds": {
+            "1": 1.73,
+            "X": 4.5,
+            "2": 4.9
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/burnley-z3dmTMMO/west-ham-Cxq57r8g/#viT34Egl",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/burnley-z3dmTMMO/west-ham-Cxq57r8g/#viT34Egl",
+        "match_date": "2017-05-21",
+        "home_team": "Burnley",
+        "away_team": "West Ham",
+        "home_score": 1,
+        "away_score": 2,
+        "odds": {
+            "1": 2.33,
+            "X": 3.55,
+            "2": 3.28
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/sunderland-WSzc94ws/#YDS73Y8f",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/sunderland-WSzc94ws/#YDS73Y8f",
+        "match_date": "2017-05-21",
+        "home_team": "Chelsea",
+        "away_team": "Sunderland",
+        "home_score": 5,
+        "away_score": 1,
+        "odds": {
+            "1": 1.12,
+            "X": 13.0,
+            "2": 40.0
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/manchester-united-ppjDR086/#MZ82PFVD",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/manchester-united-ppjDR086/#MZ82PFVD",
+        "match_date": "2017-05-21",
+        "home_team": "Manchester Utd",
+        "away_team": "Crystal Palace",
+        "home_score": 2,
+        "away_score": 0,
+        "odds": {
+            "1": 2.36,
+            "X": 3.4,
+            "2": 3.4
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/hull-city-S66R0t75/tottenham-UDg08Ohm/#C4RB2hO0",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/hull-city-S66R0t75/tottenham-UDg08Ohm/#C4RB2hO0",
+        "match_date": "2017-05-21",
+        "home_team": "Hull",
+        "away_team": "Tottenham",
+        "home_score": 1,
+        "away_score": 7,
+        "odds": {
+            "1": 10.0,
+            "X": 6.5,
+            "2": 1.33
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/middlesbrough-6F0lvLNC/#8WKK0WhD",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/middlesbrough-6F0lvLNC/#8WKK0WhD",
+        "match_date": "2017-05-21",
+        "home_team": "Liverpool",
+        "away_team": "Middlesbrough",
+        "home_score": 3,
+        "away_score": 0,
+        "odds": {
+            "1": 1.17,
+            "X": 10.5,
+            "2": 24.0
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/watford-UmMRoGzp/#I12BNg0Q",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/watford-UmMRoGzp/#I12BNg0Q",
+        "match_date": "2017-05-21",
+        "home_team": "Watford",
+        "away_team": "Manchester City",
+        "home_score": 0,
+        "away_score": 5,
+        "odds": {
+            "1": 21.0,
+            "X": 9.5,
+            "2": 1.19
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/southampton-WdKOwxDM/stoke-city-hSUajdSS/#zwD6OZpK",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/southampton-WdKOwxDM/stoke-city-hSUajdSS/#zwD6OZpK",
+        "match_date": "2017-05-21",
+        "home_team": "Southampton",
+        "away_team": "Stoke",
+        "home_score": 0,
+        "away_score": 1,
+        "odds": {
+            "1": 1.68,
+            "X": 4.38,
+            "2": 5.6
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/swansea-K6xezbY7/west-brom-CCBWpzjj/#O0dntaCM",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/swansea-K6xezbY7/west-brom-CCBWpzjj/#O0dntaCM",
+        "match_date": "2017-05-21",
+        "home_team": "Swansea",
+        "away_team": "West Brom",
+        "home_score": 2,
+        "away_score": 1,
+        "odds": {
+            "1": 2.32,
+            "X": 3.5,
+            "2": 3.4
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/tottenham-UDg08Ohm/#GCzN8lZb",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/tottenham-UDg08Ohm/#GCzN8lZb",
+        "match_date": "2017-05-18",
+        "home_team": "Leicester",
+        "away_team": "Tottenham",
+        "home_score": 1,
+        "away_score": 6,
+        "odds": {
+            "1": 4.2,
+            "X": 4.2,
+            "2": 4.04
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/southampton-WdKOwxDM/#AwQxP6O3",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/southampton-WdKOwxDM/#AwQxP6O3",
+        "match_date": "2017-05-17",
+        "home_team": "Southampton",
+        "away_team": "Manchester Utd",
+        "home_score": 0,
+        "away_score": 0,
+        "odds": {
+            "1": 2.47,
+            "X": 2.47,
+            "2": 3.3
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/west-brom-CCBWpzjj/#OxvV6S3B",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/west-brom-CCBWpzjj/#OxvV6S3B",
+        "match_date": "2017-05-16",
+        "home_team": "Manchester City",
+        "away_team": "West Brom",
+        "home_score": 3,
+        "away_score": 1,
+        "odds": {
+            "1": 1.16,
+            "X": 1.16,
+            "2": 10.0
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/sunderland-WSzc94ws/#4Y64j7JU",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/sunderland-WSzc94ws/#4Y64j7JU",
+        "match_date": "2017-05-16",
+        "home_team": "Arsenal",
+        "away_team": "Sunderland",
+        "home_score": 2,
+        "away_score": 0,
+        "odds": {
+            "1": 1.13,
+            "X": 13.0,
+            "2": 28.0
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/watford-UmMRoGzp/#UPiG75gT",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/watford-UmMRoGzp/#UPiG75gT",
+        "match_date": "2017-05-15",
+        "home_team": "Chelsea",
+        "away_team": "Watford",
+        "home_score": 4,
+        "away_score": 3,
+        "odds": {
+            "1": 1.3,
+            "X": 1.3,
+            "2": 6.6
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/tottenham-UDg08Ohm/#E9qPBd1E",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/tottenham-UDg08Ohm/#E9qPBd1E",
+        "match_date": "2017-05-14",
+        "home_team": "Tottenham",
+        "away_team": "Manchester Utd",
+        "home_score": 2,
+        "away_score": 1,
+        "odds": {
+            "1": 1.67,
+            "X": 1.67,
+            "2": 4.05
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/west-ham-Cxq57r8g/#MZnX9zWQ",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/west-ham-Cxq57r8g/#MZnX9zWQ",
+        "match_date": "2017-05-14",
+        "home_team": "West Ham",
+        "away_team": "Liverpool",
+        "home_score": 0,
+        "away_score": 4,
+        "odds": {
+            "1": 6.15,
+            "X": 4.2,
+            "2": 1.66
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/hull-city-S66R0t75/#nc4QjePl",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/hull-city-S66R0t75/#nc4QjePl",
+        "match_date": "2017-05-14",
+        "home_team": "Crystal Palace",
+        "away_team": "Hull",
+        "home_score": 4,
+        "away_score": 0,
+        "odds": {
+            "1": 1.95,
+            "X": 3.74,
+            "2": 4.33
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/stoke-city-hSUajdSS/#zJpLCxn8",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/stoke-city-hSUajdSS/#zJpLCxn8",
+        "match_date": "2017-05-13",
+        "home_team": "Stoke",
+        "away_team": "Arsenal",
+        "home_score": 1,
+        "away_score": 4,
+        "odds": {
+            "1": 5.5,
+            "X": 5.5,
+            "2": 4.24
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/burnley-z3dmTMMO/#KzYTiyAr",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/burnley-z3dmTMMO/#KzYTiyAr",
+        "match_date": "2017-05-13",
+        "home_team": "Bournemouth",
+        "away_team": "Burnley",
+        "home_score": 2,
+        "away_score": 1,
+        "odds": {
+            "1": 1.86,
+            "X": 4.04,
+            "2": 4.5
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/middlesbrough-6F0lvLNC/southampton-WdKOwxDM/#YD6xlg97",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/middlesbrough-6F0lvLNC/southampton-WdKOwxDM/#YD6xlg97",
+        "match_date": "2017-05-13",
+        "home_team": "Middlesbrough",
+        "away_team": "Southampton",
+        "home_score": 1,
+        "away_score": 2,
+        "odds": {
+            "1": 3.95,
+            "X": 3.55,
+            "2": 2.1
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/sunderland-WSzc94ws/swansea-K6xezbY7/#pAcrsucG",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/sunderland-WSzc94ws/swansea-K6xezbY7/#pAcrsucG",
+        "match_date": "2017-05-13",
+        "home_team": "Sunderland",
+        "away_team": "Swansea",
+        "home_score": 0,
+        "away_score": 2,
+        "odds": {
+            "1": 3.5,
+            "X": 3.6,
+            "2": 2.3
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/manchester-city-Wtn9Stg0/#KA2YlZg1",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/manchester-city-Wtn9Stg0/#KA2YlZg1",
+        "match_date": "2017-05-13",
+        "home_team": "Manchester City",
+        "away_team": "Leicester",
+        "home_score": 2,
+        "away_score": 1,
+        "odds": {
+            "1": 1.24,
+            "X": 8.0,
+            "2": 13.0
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/west-brom-CCBWpzjj/#rqlTAGGK",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/west-brom-CCBWpzjj/#rqlTAGGK",
+        "match_date": "2017-05-12",
+        "home_team": "West Brom",
+        "away_team": "Chelsea",
+        "home_score": 0,
+        "away_score": 1,
+        "odds": {
+            "1": 10.0,
+            "X": 10.0,
+            "2": 5.25
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/everton-KluSTr9s/watford-UmMRoGzp/#Qm3UkFve",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/everton-KluSTr9s/watford-UmMRoGzp/#Qm3UkFve",
+        "match_date": "2017-05-12",
+        "home_team": "Everton",
+        "away_team": "Watford",
+        "home_score": 1,
+        "away_score": 0,
+        "odds": {
+            "1": 1.44,
+            "X": 5.1,
+            "2": 8.75
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/southampton-WdKOwxDM/#h0Y90Wun",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/southampton-WdKOwxDM/#h0Y90Wun",
+        "match_date": "2017-05-10",
+        "home_team": "Southampton",
+        "away_team": "Arsenal",
+        "home_score": 0,
+        "away_score": 2,
+        "odds": {
+            "1": 3.42,
+            "X": 3.42,
+            "2": 3.78
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/middlesbrough-6F0lvLNC/#0W03yGP1",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/middlesbrough-6F0lvLNC/#0W03yGP1",
+        "match_date": "2017-05-08",
+        "home_team": "Chelsea",
+        "away_team": "Middlesbrough",
+        "home_score": 3,
+        "away_score": 0,
+        "odds": {
+            "1": 1.14,
+            "X": 1.14,
+            "2": 10.0
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/manchester-united-ppjDR086/#vHCfwxek",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/manchester-united-ppjDR086/#vHCfwxek",
+        "match_date": "2017-05-07",
+        "home_team": "Arsenal",
+        "away_team": "Manchester Utd",
+        "home_score": 2,
+        "away_score": 0,
+        "odds": {
+            "1": 2.16,
+            "X": 2.16,
+            "2": 3.64
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/southampton-WdKOwxDM/#A1rfbwXE",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/southampton-WdKOwxDM/#A1rfbwXE",
+        "match_date": "2017-05-07",
+        "home_team": "Liverpool",
+        "away_team": "Southampton",
+        "home_score": 0,
+        "away_score": 0,
+        "odds": {
+            "1": 1.62,
+            "X": 4.44,
+            "2": 6.25
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/everton-KluSTr9s/swansea-K6xezbY7/#SY2wrLsA",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/everton-KluSTr9s/swansea-K6xezbY7/#SY2wrLsA",
+        "match_date": "2017-05-06",
+        "home_team": "Swansea",
+        "away_team": "Everton",
+        "home_score": 1,
+        "away_score": 0,
+        "odds": {
+            "1": 2.55,
+            "X": 2.55,
+            "2": 3.52
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/stoke-city-hSUajdSS/#St9jvIuq",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/stoke-city-hSUajdSS/#St9jvIuq",
+        "match_date": "2017-05-06",
+        "home_team": "Bournemouth",
+        "away_team": "Stoke",
+        "home_score": 2,
+        "away_score": 2,
+        "odds": {
+            "1": 2.4,
+            "X": 3.54,
+            "2": 3.25
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/burnley-z3dmTMMO/west-brom-CCBWpzjj/#Mu2axdAe",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/burnley-z3dmTMMO/west-brom-CCBWpzjj/#Mu2axdAe",
+        "match_date": "2017-05-06",
+        "home_team": "Burnley",
+        "away_team": "West Brom",
+        "home_score": 2,
+        "away_score": 2,
+        "odds": {
+            "1": 2.6,
+            "X": 3.1,
+            "2": 3.34
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/hull-city-S66R0t75/sunderland-WSzc94ws/#lnfo0a22",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/hull-city-S66R0t75/sunderland-WSzc94ws/#lnfo0a22",
+        "match_date": "2017-05-06",
+        "home_team": "Hull",
+        "away_team": "Sunderland",
+        "home_score": 0,
+        "away_score": 2,
+        "odds": {
+            "1": 1.57,
+            "X": 4.6,
+            "2": 7.0
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/watford-UmMRoGzp/#SxgkaJH8",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/watford-UmMRoGzp/#SxgkaJH8",
+        "match_date": "2017-05-06",
+        "home_team": "Leicester",
+        "away_team": "Watford",
+        "home_score": 3,
+        "away_score": 0,
+        "odds": {
+            "1": 1.67,
+            "X": 3.98,
+            "2": 6.1
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/manchester-city-Wtn9Stg0/#O4nbccnL",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/manchester-city-Wtn9Stg0/#O4nbccnL",
+        "match_date": "2017-05-06",
+        "home_team": "Manchester City",
+        "away_team": "Crystal Palace",
+        "home_score": 5,
+        "away_score": 0,
+        "odds": {
+            "1": 1.26,
+            "X": 7.35,
+            "2": 12.0
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/tottenham-UDg08Ohm/west-ham-Cxq57r8g/#IRo2dH1R",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/tottenham-UDg08Ohm/west-ham-Cxq57r8g/#IRo2dH1R",
+        "match_date": "2017-05-05",
+        "home_team": "West Ham",
+        "away_team": "Tottenham",
+        "home_score": 1,
+        "away_score": 0,
+        "odds": {
+            "1": 8.75,
+            "X": 8.75,
+            "2": 5.3
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/watford-UmMRoGzp/#WANKqvIL",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/watford-UmMRoGzp/#WANKqvIL",
+        "match_date": "2017-05-01",
+        "home_team": "Watford",
+        "away_team": "Liverpool",
+        "home_score": 0,
+        "away_score": 1,
+        "odds": {
+            "1": 6.15,
+            "X": 6.15,
+            "2": 4.4
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/tottenham-UDg08Ohm/#EZSFpK2F",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/tottenham-UDg08Ohm/#EZSFpK2F",
+        "match_date": "2017-04-30",
+        "home_team": "Tottenham",
+        "away_team": "Arsenal",
+        "home_score": 2,
+        "away_score": 0,
+        "odds": {
+            "1": 1.82,
+            "X": 1.82,
+            "2": 4.3
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/everton-KluSTr9s/#jij7mv3j",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/everton-KluSTr9s/#jij7mv3j",
+        "match_date": "2017-04-30",
+        "home_team": "Everton",
+        "away_team": "Chelsea",
+        "home_score": 0,
+        "away_score": 3,
+        "odds": {
+            "1": 4.54,
+            "X": 3.84,
+            "2": 1.93
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/middlesbrough-6F0lvLNC/#UskBnbId",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/middlesbrough-6F0lvLNC/#UskBnbId",
+        "match_date": "2017-04-30",
+        "home_team": "Middlesbrough",
+        "away_team": "Manchester City",
+        "home_score": 2,
+        "away_score": 2,
+        "odds": {
+            "1": 13.0,
+            "X": 6.75,
+            "2": 1.28
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/swansea-K6xezbY7/#lr4Zr1S3",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/swansea-K6xezbY7/#lr4Zr1S3",
+        "match_date": "2017-04-30",
+        "home_team": "Manchester Utd",
+        "away_team": "Swansea",
+        "home_score": 1,
+        "away_score": 1,
+        "odds": {
+            "1": 1.43,
+            "X": 5.0,
+            "2": 9.1
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/burnley-z3dmTMMO/crystal-palace-AovF1Mia/#rRj3lKmp",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/burnley-z3dmTMMO/crystal-palace-AovF1Mia/#rRj3lKmp",
+        "match_date": "2017-04-29",
+        "home_team": "Crystal Palace",
+        "away_team": "Burnley",
+        "home_score": 0,
+        "away_score": 2,
+        "odds": {
+            "1": 1.84,
+            "X": 1.84,
+            "2": 3.64
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/sunderland-WSzc94ws/#zqUBo0m9",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/sunderland-WSzc94ws/#zqUBo0m9",
+        "match_date": "2017-04-29",
+        "home_team": "Sunderland",
+        "away_team": "Bournemouth",
+        "home_score": 0,
+        "away_score": 1,
+        "odds": {
+            "1": 3.44,
+            "X": 3.7,
+            "2": 2.25
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/hull-city-S66R0t75/southampton-WdKOwxDM/#SIQ3mMId",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/hull-city-S66R0t75/southampton-WdKOwxDM/#SIQ3mMId",
+        "match_date": "2017-04-29",
+        "home_team": "Southampton",
+        "away_team": "Hull",
+        "home_score": 0,
+        "away_score": 0,
+        "odds": {
+            "1": 1.6,
+            "X": 4.4,
+            "2": 6.65
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/west-brom-CCBWpzjj/#A1MOrbXR",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/west-brom-CCBWpzjj/#A1MOrbXR",
+        "match_date": "2017-04-29",
+        "home_team": "West Brom",
+        "away_team": "Leicester",
+        "home_score": 0,
+        "away_score": 1,
+        "odds": {
+            "1": 2.8,
+            "X": 3.32,
+            "2": 2.82
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/bournemouth-0j2eUlMC/burnley-EXCPojim/#Aonqhgqt",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/bournemouth-0j2eUlMC/burnley-EXCPojim/#Aonqhgqt",
+        "match_date": "2017-04-29",
+        "home_team": "Bournemouth",
+        "away_team": "Burnley",
+        "home_score": 2,
+        "away_score": 1,
+        "odds": {
+            "1": 1.86,
+            "X": 4.04,
+            "2": 4.5
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/stoke-city-hSUajdSS/west-ham-Cxq57r8g/#tMU7ntY2",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/stoke-city-hSUajdSS/west-ham-Cxq57r8g/#tMU7ntY2",
+        "match_date": "2017-04-29",
+        "home_team": "Stoke",
+        "away_team": "West Ham",
+        "home_score": 0,
+        "away_score": 0,
+        "odds": {
+            "1": 2.06,
+            "X": 3.5,
+            "2": 4.22
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/manchester-united-ppjDR086/#E9Z51CQu",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/manchester-united-ppjDR086/#E9Z51CQu",
+        "match_date": "2017-04-27",
+        "home_team": "Manchester City",
+        "away_team": "Manchester Utd",
+        "home_score": 0,
+        "away_score": 0,
+        "odds": {
+            "1": 1.99,
+            "X": 1.99,
+            "2": 3.6
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/tottenham-UDg08Ohm/#MHqr3P1p",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/tottenham-UDg08Ohm/#MHqr3P1p",
+        "match_date": "2017-04-26",
+        "home_team": "Crystal Palace",
+        "away_team": "Tottenham",
+        "home_score": 0,
+        "away_score": 1,
+        "odds": {
+            "1": 6.0,
+            "X": 6.0,
+            "2": 4.64
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/leicester-KrrdAMyI/#8A379ROG",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/leicester-KrrdAMyI/#8A379ROG",
+        "match_date": "2017-04-26",
+        "home_team": "Arsenal",
+        "away_team": "Leicester",
+        "home_score": 1,
+        "away_score": 0,
+        "odds": {
+            "1": 1.49,
+            "X": 5.1,
+            "2": 7.4
+        },
+        "status": "Finished"
+    },
+    {
+        "scraped_date": "2026-04-19 17:53:35 UTC",
+        "sport": "football",
+        "match_link": "https://www.oddsportal.com/football/h2h/middlesbrough-6F0lvLNC/sunderland-WSzc94ws/#GGQYPn9c",
+        "h2h_url": "https://www.oddsportal.com/football/h2h/middlesbrough-6F0lvLNC/sunderland-WSzc94ws/#GGQYPn9c",
+        "match_date": "2017-04-26",
+        "home_team": "Middlesbrough",
+        "away_team": "Sunderland",
+        "home_score": 1,
+        "away_score": 0,
+        "odds": {
+            "1": 2.24,
+            "X": 3.5,
+            "2": 3.7
+        },
+        "status": "Finished"
+    }
+]

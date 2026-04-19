@@ -1,0 +1,117 @@
+2026-04-19 14:12:03,401 - root - INFO - Logging initialized. Log level: INFO (No file output)
+2026-04-19 14:12:03,404 - oddsharvester.utils.utils - INFO - No period specified, using default for football: 'full_time'
+2026-04-19 14:12:03,404 - ScraperApp - INFO - Starting scraper with parameters: command=scrape_historic, match_links=None, sport=football, date=None, leagues=['champions-league'], season=2016-2017, markets=['1x2'], max_pages=None, proxy_url=None, browser_user_agent=None, browser_locale_timezone=None, browser_timezone_id=None, scrape_odds_history=True, target_bookmaker=None, headless=True, preview_submarkets_only=False, bookies_filter=all, period=None, checkpoint_file_path=/app/data/batch/uefa-champions-league/2016-2017.json
+2026-04-19 14:12:03,404 - ProxyManager - INFO - No proxy provided, running without proxy.
+2026-04-19 14:12:03,406 - ProxyManager - INFO - No proxy available, using direct connection.
+2026-04-19 14:12:03,406 - PlaywrightManager - INFO - Starting Playwright...
+2026-04-19 14:12:03,906 - PlaywrightManager - INFO - Playwright initialized successfully.
+2026-04-19 14:12:03,906 - ScraperApp - INFO - 
+                Scraping historical odds for sport=football, leagues=['champions-league'], season=2016-2017, markets=['1x2'], scrape_odds_history=True, target_bookmaker=None, max_pages=None
+            
+2026-04-19 14:12:03,907 - OddsPortalScraper - INFO - Starting historic scraping for football - champions-league - 2016-2017
+2026-04-19 14:12:03,907 - OddsPortalScraper - INFO - Base URL: https://www.oddsportal.com/football/europe/champions-league-2016-2017/results/
+2026-04-19 14:12:03,907 - OddsPortalScraper - INFO - Max pages parameter: None
+2026-04-19 14:12:03,907 - OddsPortalScraper - INFO - Setting consent cookies in browser context...
+2026-04-19 14:12:03,911 - OddsPortalScraper - INFO - Blocking OneTrust scripts to prevent bot detection...
+2026-04-19 14:12:03,913 - OddsPortalScraper - INFO - Navigating to base URL...
+2026-04-19 14:12:13,530 - OddsPortalScraper - INFO - Setting consent cookies via JavaScript...
+2026-04-19 14:12:15,106 - OddsPortalScraper - INFO - Step 1: Analyzing pagination information...
+2026-04-19 14:12:15,106 - OddsPortalScraper - INFO - Analyzing pagination information...
+2026-04-19 14:12:15,208 - OddsPortalScraper - INFO - Found 6 pagination links
+2026-04-19 14:12:15,299 - OddsPortalScraper - INFO - Raw pagination pages found: [1, 2, 3, 4, 5]
+2026-04-19 14:12:15,299 - OddsPortalScraper - INFO - Pagination HTML showed [1, 2, 3, 4, 5], filling to contiguous range 1..5 (5 pages)
+2026-04-19 14:12:15,299 - OddsPortalScraper - INFO - Will scrape all 5 pages (limit: 50)
+2026-04-19 14:12:15,299 - OddsPortalScraper - INFO - Final pages to scrape: [1, 2, 3, 4, 5]
+2026-04-19 14:12:15,300 - OddsPortalScraper - INFO - Step 2: Collecting match links from all pages...
+2026-04-19 14:12:15,300 - OddsPortalScraper - INFO - Starting collection of match links from 5 pages
+2026-04-19 14:12:15,300 - OddsPortalScraper - INFO - Pages to process: [1, 2, 3, 4, 5]
+2026-04-19 14:12:15,300 - OddsPortalScraper - INFO - Processing page 1/5: 1
+2026-04-19 14:12:15,355 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/europe/champions-league-2016-2017/results/#/page/1
+2026-04-19 14:12:24,801 - OddsPortalScraper - INFO - Scrolling page 1 to load all matches...
+2026-04-19 14:12:24,801 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:12:24,864 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:12:24,864 - BrowserHelper - INFO - Initial page height: 2311
+2026-04-19 14:12:26,946 - BrowserHelper - INFO - Current element count: 51 (height: 3687)
+2026-04-19 14:12:29,084 - BrowserHelper - INFO - Current element count: 51 (height: 3687)
+2026-04-19 14:12:31,173 - BrowserHelper - INFO - Current element count: 51 (height: 3687)
+2026-04-19 14:12:33,269 - BrowserHelper - INFO - Current element count: 51 (height: 3687)
+2026-04-19 14:12:33,270 - BrowserHelper - INFO - Content stabilized at 51 elements. Scrolling complete.
+2026-04-19 14:12:33,270 - OddsPortalScraper - INFO - Extracting match links from page 1...
+2026-04-19 14:12:33,507 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-04-19 14:12:33,511 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:12:33,511 - OddsPortalScraper - INFO - Extracted 0 links from page 1
+2026-04-19 14:12:33,530 - OddsPortalScraper - INFO - Processing page 2/5: 2
+2026-04-19 14:12:33,572 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/europe/champions-league-2016-2017/results/#/page/2
+2026-04-19 14:12:44,300 - OddsPortalScraper - INFO - Scrolling page 2 to load all matches...
+2026-04-19 14:12:44,300 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:12:44,364 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:12:44,364 - BrowserHelper - INFO - Initial page height: 2327
+2026-04-19 14:12:46,397 - BrowserHelper - INFO - Current element count: 0 (height: 2327)
+2026-04-19 14:12:48,476 - BrowserHelper - INFO - Current element count: 50 (height: 3391)
+2026-04-19 14:12:50,605 - BrowserHelper - INFO - Current element count: 50 (height: 3391)
+2026-04-19 14:12:52,693 - BrowserHelper - INFO - Current element count: 50 (height: 3391)
+2026-04-19 14:12:54,777 - BrowserHelper - INFO - Current element count: 50 (height: 3391)
+2026-04-19 14:12:54,777 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:12:54,778 - OddsPortalScraper - INFO - Extracting match links from page 2...
+2026-04-19 14:12:55,018 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:12:55,021 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:12:55,021 - OddsPortalScraper - INFO - Extracted 0 links from page 2
+2026-04-19 14:12:55,034 - OddsPortalScraper - INFO - Processing page 3/5: 3
+2026-04-19 14:12:55,084 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/europe/champions-league-2016-2017/results/#/page/3
+2026-04-19 14:13:05,028 - OddsPortalScraper - INFO - Scrolling page 3 to load all matches...
+2026-04-19 14:13:05,029 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:13:05,096 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:13:05,096 - BrowserHelper - INFO - Initial page height: 2343
+2026-04-19 14:13:07,128 - BrowserHelper - INFO - Current element count: 0 (height: 2343)
+2026-04-19 14:13:09,244 - BrowserHelper - INFO - Current element count: 50 (height: 3455)
+2026-04-19 14:13:11,372 - BrowserHelper - INFO - Current element count: 50 (height: 3455)
+2026-04-19 14:13:13,509 - BrowserHelper - INFO - Current element count: 50 (height: 3455)
+2026-04-19 14:13:15,597 - BrowserHelper - INFO - Current element count: 50 (height: 3455)
+2026-04-19 14:13:15,597 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:13:15,597 - OddsPortalScraper - INFO - Extracting match links from page 3...
+2026-04-19 14:13:15,797 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:13:15,801 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:13:15,801 - OddsPortalScraper - INFO - Extracted 0 links from page 3
+2026-04-19 14:13:15,814 - OddsPortalScraper - INFO - Processing page 4/5: 4
+2026-04-19 14:13:15,856 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/europe/champions-league-2016-2017/results/#/page/4
+2026-04-19 14:13:26,574 - OddsPortalScraper - INFO - Scrolling page 4 to load all matches...
+2026-04-19 14:13:26,574 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:13:26,639 - BrowserHelper - INFO - Initial element count: 0
+2026-04-19 14:13:26,639 - BrowserHelper - INFO - Initial page height: 2327
+2026-04-19 14:13:28,669 - BrowserHelper - INFO - Current element count: 0 (height: 2327)
+2026-04-19 14:13:30,745 - BrowserHelper - INFO - Current element count: 50 (height: 3415)
+2026-04-19 14:13:32,864 - BrowserHelper - INFO - Current element count: 50 (height: 3415)
+2026-04-19 14:13:34,956 - BrowserHelper - INFO - Current element count: 50 (height: 3415)
+2026-04-19 14:13:37,053 - BrowserHelper - INFO - Current element count: 50 (height: 3415)
+2026-04-19 14:13:37,053 - BrowserHelper - INFO - Content stabilized at 50 elements. Scrolling complete.
+2026-04-19 14:13:37,053 - OddsPortalScraper - INFO - Extracting match links from page 4...
+2026-04-19 14:13:37,289 - OddsPortalScraper - INFO - Found 50 event rows.
+2026-04-19 14:13:37,292 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:13:37,292 - OddsPortalScraper - INFO - Extracted 0 links from page 4
+2026-04-19 14:13:37,307 - OddsPortalScraper - INFO - Processing page 5/5: 5
+2026-04-19 14:13:37,350 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/europe/champions-league-2016-2017/results/#/page/5
+2026-04-19 14:13:46,628 - OddsPortalScraper - INFO - Scrolling page 5 to load all matches...
+2026-04-19 14:13:46,628 - BrowserHelper - INFO - Will scroll to the bottom of the page to load all content.
+2026-04-19 14:13:46,720 - BrowserHelper - INFO - Initial element count: 18
+2026-04-19 14:13:46,721 - BrowserHelper - INFO - Initial page height: 2253
+2026-04-19 14:13:48,803 - BrowserHelper - INFO - Current element count: 18 (height: 2253)
+2026-04-19 14:13:50,855 - BrowserHelper - INFO - Current element count: 18 (height: 2253)
+2026-04-19 14:13:52,980 - BrowserHelper - INFO - Current element count: 18 (height: 2253)
+2026-04-19 14:13:52,980 - BrowserHelper - INFO - Content stabilized at 18 elements. Scrolling complete.
+2026-04-19 14:13:52,980 - OddsPortalScraper - INFO - Extracting match links from page 5...
+2026-04-19 14:13:53,129 - OddsPortalScraper - INFO - Found 18 event rows.
+2026-04-19 14:13:53,131 - OddsPortalScraper - INFO - Extracted 0 unique match links.
+2026-04-19 14:13:53,131 - OddsPortalScraper - INFO - Extracted 0 links from page 5
+2026-04-19 14:13:53,145 - OddsPortalScraper - INFO - Collection Summary:
+2026-04-19 14:13:53,145 - OddsPortalScraper - INFO -    - Total pages processed: 5
+2026-04-19 14:13:53,145 - OddsPortalScraper - INFO -    - Successful pages: 5
+2026-04-19 14:13:53,145 - OddsPortalScraper - INFO -    - Failed pages: 0
+2026-04-19 14:13:53,146 - OddsPortalScraper - INFO -    - Total links found: 0
+2026-04-19 14:13:53,146 - OddsPortalScraper - INFO -    - Unique links: 0
+2026-04-19 14:13:53,146 - OddsPortalScraper - INFO - Step 3: Extracting odds from collected match links...
+2026-04-19 14:13:53,146 - OddsPortalScraper - INFO - Total unique matches to process: 0
+2026-04-19 14:13:53,146 - OddsPortalScraper - INFO - Starting to scrape odds for 0 match links...
+2026-04-19 14:13:53,146 - OddsPortalScraper - INFO - Scraping complete: 0/0 successful (0.0%)
+2026-04-19 14:13:53,146 - PlaywrightManager - INFO - Cleaning up Playwright resources...
+2026-04-19 14:13:53,245 - PlaywrightManager - INFO - Playwright resources cleanup complete.
+2026-04-19 14:13:53,245 - oddsharvester.cli.commands.historic - ERROR - Scraper did not return valid data.
