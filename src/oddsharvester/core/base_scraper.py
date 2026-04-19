@@ -17,6 +17,7 @@ from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
 from oddsharvester.core.playwright_manager import PlaywrightManager
 from oddsharvester.core.retry import RetryConfig, classify_error, is_retryable_error, retry_with_backoff
 from oddsharvester.core.scrape_result import FailedUrl, ScrapeResult, ScrapeStats
+from oddsharvester.storage.storage_manager import store_data
 from oddsharvester.utils.bookies_filter_enum import BookiesFilter
 from oddsharvester.utils.constants import (
     DEFAULT_REQUEST_DELAY_S,
