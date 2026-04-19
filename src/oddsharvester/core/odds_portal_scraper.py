@@ -108,8 +108,35 @@ class OddsPortalScraper(BaseScraper):
 
         # Navigate to the base URL
         self.logger.info("Navigating to base URL...")
-        await current_page.goto(base_url)
-        await self._prepare_page_for_scraping(page=current_page)
+        await current_page.goto(base_url, timeout=60000)
+        
+        # Wait for page to be fully loaded
+        await current_page.wait_for_load_state('networkidle', timeout=30000)
+        
+        # Set consent cookies via JavaScript after page load
+        self.logger.info("Setting consent cookies via JavaScript...")
+        await current_page.evaluate(
+            """
+            () => {
+                const consentValue = 'groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CC0006%3A1%2CC0007%3A1%2CC0008%3A1%2CC0009%3A1%2CC0010%3A1%2CC0011%3A1%2CC0012%3A1%2CC0013%3A1%2CC0014%3A1%2CC0015%3A1%2CC0016%3A1%2CC0017%3A1%2CC0018%3A1%2CC0019%3A1%2CC0020%3A1%2CC0021%3A1%2CC0022%3A1%2CC0023%3A1%2CC0024%3A1%2CC0025%3A1';
+                document.cookie = 'OptanonConsent=' + consentValue + '; domain=.oddsportal.com; path=/; max-age=31536000';
+                document.cookie = 'OptanonConsent=' + consentValue + '; domain=www.oddsportal.com; path=/; max-age=31536000';
+                document.cookie = 'OptanonAlertBoxClosed=Sun%20Apr%2019%202026%2000%3A00%3A00%20GMT%2B0000%20(Coordinated%20Universal%20Time); domain=.oddsportal.com; path=/; max-age=31536000';
+                
+                // Try to hide the banner if it exists
+                const banner = document.querySelector('#onetrust-banner-sdk');
+                if (banner) banner.style.display = 'none';
+                const consent = document.querySelector('#onetrust-consent-sdk');
+                if (consent) consent.style.display = 'none';
+                const dark = document.querySelector('.onetrust-pc-dark-filter');
+                if (dark) dark.style.display = 'none';
+            }
+            """
+        )
+        
+        # Add random delay to mimic human behavior
+        import random
+        await current_page.wait_for_timeout(random.randint(1000, 2000))
 
         # Analyze pagination and determine pages to scrape
         self.logger.info("Step 1: Analyzing pagination information...")
