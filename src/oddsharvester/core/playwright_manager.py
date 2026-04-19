@@ -156,6 +156,11 @@ class PlaywrightManager:
             # Add anti-detection script
             await self.context.add_init_script(STEALTH_SCRIPT)
 
+            # Block OneTrust/cookie scripts to prevent bot detection
+            await self.context.route("**/onetrust*/**", lambda route: route.abort())
+            await self.context.route("**/cookiebot*/**", lambda route: route.abort())
+            await self.context.route("**/cookies*/**", lambda route: route.abort())
+
             self.page = await self.context.new_page()
             self.logger.info("Playwright initialized successfully.")
 
