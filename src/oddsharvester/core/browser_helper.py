@@ -141,6 +141,33 @@ class BrowserHelper:
         except Exception as e:
             self.logger.debug(f"Failed to set consent cookie via JS: {e}")
 
+    async def set_consent_cookies_for_context(self, context) -> None:
+        """Set OneTrust consent cookies in browser context before navigation.
+        
+        This should be called BEFORE navigating to an OddsPortal page.
+        """
+        try:
+            consent_cookies = [
+                {
+                    'name': 'OptanonConsent',
+                    'value': 'groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CC0006%3A1%2CC0007%3A1%2CC0008%3A1%2CC0009%3A1%2CC0010%3A1%2CC0011%3A1%2CC0012%3A1%2CC0013%3A1%2CC0014%3A1%2CC0015%3A1%2CC0016%3A1%2CC0017%3A1%2CC0018%3A1%2CC0019%3A1%2CC0020%3A1%2CC0021%3A1%2CC0022%3A1%2CC0023%3A1%2CC0024%3A1%2CC0025%3A1;-datestamp=Sun%20Apr%2019%202026%2000%3A00%3A00%20GMT%2B0000%20(Coordinated%20Universal%20Time);-version=20251209;-isIABGlobal=false;-hosts=_www.oddsportal.com;-consentId=consent-placeholder;-consentCreated=Sun%20Apr%2019%202026%2000%3A00%3A00%20GMT%2B0000%20(Coordinated%20Universal%20Time);-consentCompanyName=OneTrust%20Privacy%20Solutions;-preferenceNotApplied=;-isAnonymousConsent=true;',
+                    'domain': '.oddsportal.com',
+                    'path': '/',
+                    'expires': int(time.time()) + 31536000,  # 1 year
+                },
+                {
+                    'name': 'OptanonAlertBoxClosed',
+                    'value': 'Sun%20Apr%2019%202026%2000%3A00%3A00%20GMT%2B0000%20(Coordinated%20Universal%20Time)',
+                    'domain': '.oddsportal.com',
+                    'path': '/',
+                    'expires': int(time.time()) + 31536000,
+                },
+            ]
+            await context.add_cookies(consent_cookies)
+            self.logger.info("Consent cookies set in browser context")
+        except Exception as e:
+            self.logger.debug(f"Failed to set consent cookies in context: {e}")
+
     async def _force_accept_and_remove_cookie_banner(self, page: Page) -> None:
         """Apply a hard fallback for stubborn OneTrust/cookie banners."""
         try:

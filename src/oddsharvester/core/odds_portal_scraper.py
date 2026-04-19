@@ -102,6 +102,10 @@ class OddsPortalScraper(BaseScraper):
         self.logger.info(f"Base URL: {base_url}")
         self.logger.info(f"Max pages parameter: {max_pages}")
 
+        # Set consent cookies before navigation to prevent cookie banner
+        self.logger.info("Setting consent cookies in browser context...")
+        await self.browser_helper.set_consent_cookies_for_context(current_page.context)
+
         # Navigate to the base URL
         self.logger.info("Navigating to base URL...")
         await current_page.goto(base_url)
