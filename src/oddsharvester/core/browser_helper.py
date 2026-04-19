@@ -64,12 +64,16 @@ class BrowserHelper:
         selectors = [selector] if selector else OddsPortalSelectors.COOKIE_BANNER_SELECTORS
 
         try:
+            # First, try to set consent cookie directly via JavaScript
+            # This may prevent the banner from appearing
+            await self._set_consent_cookie_via_js(page)
+
             self.logger.info("Checking for cookie banner...")
 
             banner_present = await self._has_cookie_banner(page)
             if not banner_present:
                 self.logger.info("No cookie banner detected.")
-                return False
+                return True  # Cookie was set, banner not needed
 
             for candidate in selectors:
                 try:
@@ -103,11 +107,39 @@ class BrowserHelper:
 
         except PlaywrightTimeoutError:
             self.logger.info("No cookie banner detected.")
-            return False
+            return True
 
         except Exception as e:
             self.logger.error(f"Error while dismissing cookie banner: {e}")
             return False
+
+    async def _set_consent_cookie_via_js(self, page: Page) -> None:
+        """Set OneTrust consent cookie directly via JavaScript to prevent banner from appearing."""
+        try:
+            await page.evaluate(
+                """
+                () => {
+                    try {
+                        // OneTrust consent cookie - set to accept all categories
+                        const consentValue = 'groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CC0006%3A1%2CC0007%3A1%2CC0008%3A1%2CC0009%3A1%2CC0010%3A1%2CC0011%3A1%2CC0012%3A1%2CC0013%3A1%2CC0014%3A1%2CC0015%3A1%2CC0016%3A1%2CC0017%3A1%2CC0018%3A1%2CC0019%3A1%2CC0020%3A1%2CC0021%3A1%2CC0022%3A1%2CC0023%3A1%2CC0024%3A1%2CC0025%3A1';
+                        
+                        // Set cookie via document.cookie
+                        document.cookie = 'OptanonConsent=' + consentValue + '; domain=.oddsportal.com; path=/; max-age=31536000';
+                        document.cookie = 'OptanonConsent=' + consentValue + '; domain=www.oddsportal.com; path=/; max-age=31536000';
+                        
+                        // Also set OneTrust's internal consent object
+                        if (window.Optanon) {
+                            window.Optanon.SetAlertBoxClosed();
+                        }
+                        
+                        // Remove webdriver detection
+                        Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                    } catch(e) {}
+                }
+                """
+            )
+        except Exception as e:
+            self.logger.debug(f"Failed to set consent cookie via JS: {e}")
 
     async def _force_accept_and_remove_cookie_banner(self, page: Page) -> None:
         """Apply a hard fallback for stubborn OneTrust/cookie banners."""
@@ -115,6 +147,23 @@ class BrowserHelper:
             await page.evaluate(
                 """
                 (config) => {
+                    // First, try to set OneTrust consent cookie directly
+                    try {
+                        // OneTrust consent cookie - set to accept all categories
+                        const consentValue = 'groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CC0006%3A1%2CC0007%3A1%2CC0008%3A1%2CC0009%3A1%2CC0010%3A1%2CC0011%3A1%2CC0012%3A1%2CC0013%3A1%2CC0014%3A1%2CC0015%3A1%2CC0016%3A1%2CC0017%3A1%2CC0018%3A1%2CC0019%3A1%2CC0020%3A1%2CC0021%3A1%2CC0022%3A1%2CC0023%3A1%2CC0024%3A1%2CC0025%3A1';
+                        
+                        document.cookie = 'OptanonConsent=' + consentValue + '; domain=.oddsportal.com; path=/; max-age=31536000';
+                        document.cookie = 'OptanonConsent=' + consentValue + '; domain=www.oddsportal.com; path=/; max-age=31536000';
+                    } catch(e) {}
+
+                    // Remove webdriver detection attributes
+                    delete navigator.webdriver;
+                    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+                    
+                    // Remove automation-related classes and attributes
+                    document.documentElement.classList.remove('onetrust-consent-sdk', 'onetrust-lock', 'modal-open');
+                    document.body.classList.remove('onetrust-consent-sdk', 'onetrust-lock', 'modal-open');
+
                     const clickIfPresent = (selector) => {
                         const el = document.querySelector(selector);
                         if (!el) return false;
@@ -137,8 +186,6 @@ class BrowserHelper:
                         try { el.style.removeProperty('overflow'); } catch (_) {}
                     }
 
-                    document.documentElement.classList.remove('onetrust-consent-sdk', 'onetrust-lock', 'modal-open');
-                    document.body.classList.remove('onetrust-consent-sdk', 'onetrust-lock', 'modal-open');
                     document.documentElement.style.removeProperty('overflow');
                     document.body.style.removeProperty('overflow');
                     document.documentElement.style.removeProperty('pointer-events');
