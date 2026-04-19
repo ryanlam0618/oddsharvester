@@ -929,8 +929,8 @@ class OddsPortalScraper(BaseScraper):
             bool: True if tab was found and clicked, False otherwise.
         """
         try:
-            # Click on the inner element (div or span) that contains the tab text
-            # Do NOT click on li elements as they break the page
+            # Find the tab element that contains the tab name text
+            # Use partial match (.includes()) to find the right element
             result = await page.evaluate(
                 f"""
                 () => {{
@@ -938,12 +938,12 @@ class OddsPortalScraper(BaseScraper):
                     if (!nav) return {{ found: false, error: 'nav not found' }};
 
 
-                    // Look for inner elements (div or span) containing the tab name
-                    const allElements = nav.querySelectorAll('div, span');
-                    for (const el of allElements) {{
-                        const text = el.textContent;
+                    // Find div elements that contain the tab name
+                    const divs = nav.querySelectorAll('div');
+                    for (const div of divs) {{
+                        const text = div.textContent;
                         if (text && text.includes("{tab_name}")) {{
-                            el.click();
+                            div.click();
                             return {{ found: true, text: text.trim() }};
                         }}
                     }}
@@ -965,6 +965,47 @@ class OddsPortalScraper(BaseScraper):
 
         except Exception as e:
             self.logger.error(f"Error clicking betting tab '{tab_name}': {e}")
+            return False
+
+    async def _click_ah_tab(self, page: Page) -> bool:
+        """
+        Click on the Asian Handicap tab using exact text match.
+
+        Unlike OU, AH requires exact text match because the partial match
+        clicks on the parent nav element which doesn't switch to AH tab.
+
+        Args:
+            page: Playwright page object.
+
+        Returns:
+            bool: True if tab was found and clicked, False otherwise.
+        """
+        try:
+            result = await page.evaluate(
+                """
+                () => {
+                    const allElements = document.querySelectorAll('*');
+                    for (const el of allElements) {
+                        if (el.textContent.trim() === 'Asian Handicap') {
+                            el.click();
+                            return { found: true };
+                        }
+                    }
+                    return { found: false, error: 'AH tab not found' };
+                }
+                """
+            )
+
+            if result.get('found'):
+                self.logger.debug("Clicked AH tab")
+                await page.wait_for_timeout(3000)
+                return True
+            else:
+                self.logger.warning(f"Could not click AH tab: {result.get('error')}")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"Error clicking AH tab: {e}")
             return False
 
     async def _extract_ou_odds(self, page: Page) -> list[dict[str, Any]]:
@@ -1048,9 +1089,15 @@ class OddsPortalScraper(BaseScraper):
         """
         Extract Asian Handicap odds from the current h2h page.
 
-        The AH table shows handicap lines with their home and away odds:
-        - Handicap -0.5: Home @ 1.95, Away @ 1.95
-        - Handicap +0.5: Home @ 1.85, Away @ 2.05
+        The AH row structure shows:
+        - P element: contains the P_value (away odds)
+        - Parent text: "Asian Handicap -1.75 AH -1.75 PP.PPHH.HHP%"
+        - Pattern: P_value (2-3 digits), Home odds (starts with "1."), Payout (XX.X%)
+
+        For example "103.991.3098.1%":
+        - P_value: 10.39 (from P element)
+        - Home: 1.30 (parsed from "1.30")
+        - Payout: 98.1%
 
         Args:
             page: Playwright page object (should be on Asian Handicap tab).
@@ -1060,47 +1107,83 @@ class OddsPortalScraper(BaseScraper):
         """
         try:
             ah_data = await page.evaluate(
-                r"""
+                """
                 () => {
                     const results = [];
 
-                    // After clicking the AH tab, extract data from the page
-                    // Find negative numbers (AH handicaps) in the page
-                    const body = document.body.innerText;
-                    const negativeMatches = body.match(/(-[0-9.]+)/g) || [];
-                    
-                    // Filter for valid AH handicap values
-                    const handicaps = negativeMatches
-                        .map(m => parseFloat(m))
-                        .filter(v => v < 0 && v >= -5.0);
+                    // Find P elements with class containing "height-content"
+                    const allPElements = document.querySelectorAll('p');
 
-                    // Get odds from odd-container elements if available
-                    const oddContainers = document.querySelectorAll('[data-testid="odd-container"]');
-                    const oddsValues = [];
-                    oddContainers.forEach((el) => {
-                        const text = el.textContent.trim();
-                        const val = parseFloat(text);
-                        if (!isNaN(val) && val >= 1.0 && val <= 15.0) {
-                            oddsValues.push(val);
-                        }
-                    });
+                    for (const p of allPElements) {
+                        // Check if class name contains "height-content"
+                        if (!p.className.includes('height-content')) continue;
 
-                    // Pair odds with handicaps
-                    if (oddsValues.length > 0) {
-                        // Skip first 3 (1X2), then group by 3
-                        for (let i = 3; i + 2 < oddsValues.length && Math.floor(i / 3) < handicaps.length; i += 3) {
-                            const home = oddsValues[i];
-                            const away = oddsValues[i + 2];
-                            const handicapIdx = Math.floor(i / 3);
-                            const handicap = handicaps[handicapIdx];
-                            
-                            if (handicap !== undefined) {
+                        const text = p.textContent.trim();
+                        const pValue = parseFloat(text);
+
+                        // Only process odds-like values (1.5 - 10)
+                        if (isNaN(pValue) || pValue < 1.5 || pValue > 10) continue;
+
+                        // Walk up to find the AH row
+                        let el = p;
+                        for (let i = 0; i < 8; i++) {
+                            el = el.parentElement;
+                            if (!el) break;
+
+                            const parentText = el.textContent || '';
+                            if (!parentText.includes('Asian Handicap -')) continue;
+
+                            // Extract handicap
+                            const handicapMatch = parentText.match(/Asian Handicap\\s+(-[0-9]+\\.?[0-9]*)/);
+                            if (!handicapMatch) break;
+
+                            const handicap = parseFloat(handicapMatch[1]);
+
+                            // Extract home odds and payout from parent text
+                            // Pattern: "...PP.PPHH.HHP%" where:
+                            // - PP.PP = P_value (first digits of away odds)
+                            // - HH = home odds digits (exactly 2 digits after "1.")
+                            // - P% = payout (number ending with %)
+                            //
+                            // Example: "89.171.0896.6%" -> P=8.91, Home=1.08, Payout=96.6%
+                            // Example: "122.491.6599.2%" -> P=12.24, Home=1.65, Payout=99.2%
+
+                            // Extract home odds from the text after "AH"
+                            // The pattern after AH is: "-X PP.PPHH.HHP%"
+                            // Where PP.PP = away odds, HH = home odds, P% = payout
+                            // Strategy: match away odds, then find home odds (1.XX) after it
+
+                            const ahPos = parentText.indexOf('AH');
+                            if (ahPos < 0) break;
+
+                            // Find the first "%" after "AH"
+                            const pctPos = parentText.indexOf('%', ahPos);
+                            if (pctPos < 0) break;
+
+                            // Extract the section between "AH" and "%" (this row's odds only)
+                            const oddsSection = parentText.substring(ahPos, pctPos);
+
+                            // Find home odds: match away odds (digits.digits) then find 1.XX after it
+                            // Pattern: "AH" + space + negative number + space + away_odds + anything + 1.XX
+                            const homeOddsMatch = oddsSection.match(/(^|[0-9])(1\.\d{2})/);
+                            if (!homeOddsMatch) break;
+
+                            // Parse the home odds from the match
+                            const homeOdds = parseFloat(homeOddsMatch[2]);
+
+                            // Use P element value as away odds
+                            const awayOdds = pValue;
+
+                            // Validate odds range
+                            if (homeOdds >= 1.0 && homeOdds <= 5.0 &&
+                                awayOdds >= 1.0 && awayOdds <= 15.0) {
                                 results.push({
                                     handicap: handicap,
-                                    home: home,
-                                    away: away
+                                    home: homeOdds,
+                                    away: awayOdds
                                 });
                             }
+                            break;
                         }
                     }
 
@@ -1195,8 +1278,8 @@ class OddsPortalScraper(BaseScraper):
                 if ou_odds:
                     odds_data["over_under"] = ou_odds
 
-            # Extract Asian Handicap odds
-            if await self._click_betting_tab(current_page, "Asian Handicap"):
+            # Extract Asian Handicap odds (uses special tab click method)
+            if await self._click_ah_tab(current_page):
                 ah_odds = await self._extract_ah_odds(current_page)
                 if ah_odds:
                     odds_data["asian_handicap"] = ah_odds
