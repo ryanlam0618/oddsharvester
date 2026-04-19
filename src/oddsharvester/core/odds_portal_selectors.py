@@ -9,12 +9,31 @@ class OddsPortalSelectors:
     COOKIE_BANNER_SELECTORS: ClassVar[list[str]] = [
         "#onetrust-accept-btn-handler",
         "button#onetrust-accept-btn-handler",
-        "button:has-text('Accept')",
-        "button:has-text('Accept All')",
+        "#onetrust-banner-sdk button:has-text('Accept')",
+        "#onetrust-banner-sdk button:has-text('Accept All')",
+        "#onetrust-consent-sdk button:has-text('Accept')",
+        "#onetrust-consent-sdk button:has-text('Accept All')",
         "button:has-text('I Agree')",
         "button:has-text('Agree')",
         "button:has-text('OK')",
         "button:has-text('Got it')",
+    ]
+    COOKIE_BANNER_PRESENCE_SELECTORS: ClassVar[list[str]] = [
+        "#onetrust-banner-sdk",
+        "#onetrust-consent-sdk",
+        ".onetrust-pc-dark-filter",
+        "[id*='onetrust-banner']",
+        "[id*='onetrust-consent']",
+    ]
+    COOKIE_BANNER_CONTAINER_SELECTORS: ClassVar[list[str]] = [
+        "#onetrust-banner-sdk",
+        "#onetrust-consent-sdk",
+        "[id*='onetrust']",
+        "[class*='onetrust']",
+        "[id*='cookie']",
+        "[class*='cookie']",
+        "[id*='consent']",
+        "[class*='consent']",
     ]
 
     # Generic overlays / consent / modal surfaces that may intercept clicks

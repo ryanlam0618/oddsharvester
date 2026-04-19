@@ -3,6 +3,7 @@ import logging
 import re
 import time
 
+from playwright.async_api import Error as PlaywrightError
 from playwright.async_api import Page
 from playwright.async_api import TimeoutError as PlaywrightTimeoutError
 
@@ -65,24 +66,31 @@ class BrowserHelper:
         try:
             self.logger.info("Checking for cookie banner...")
 
+            banner_present = await self._has_cookie_banner(page)
+            if not banner_present:
+                self.logger.info("No cookie banner detected.")
+                return False
+
             for candidate in selectors:
                 try:
                     button = await page.query_selector(candidate)
-                    if not button:
+                    if not button or not await button.is_visible():
                         continue
 
-                    if not await button.is_visible():
-                        continue
-
-                    self.logger.info(f"Cookie banner found via '{candidate}'. Dismissing it.")
-                    await self._safe_click(page=page, element=button, reason=f"cookie banner via {candidate}")
-                    await page.wait_for_timeout(500)
-                    return True
+                    text = (await button.text_content() or "").strip()
+                    self.logger.info(
+                        f"Cookie banner found via '{candidate}'. Dismissing it."
+                        + (f" (text='{text[:60]}')" if text else "")
+                    )
+                    if await self._safe_click(page=page, element=button, reason=f"cookie banner via {candidate}"):
+                        await page.wait_for_timeout(500)
+                        if not await self._has_cookie_banner(page):
+                            return True
                 except Exception as inner_error:
                     self.logger.debug(f"Cookie banner selector '{candidate}' failed: {inner_error}")
                     continue
 
-            self.logger.info("No cookie banner detected.")
+            self.logger.info("Cookie banner still present after dismiss attempts.")
             return False
 
         except PlaywrightTimeoutError:
@@ -93,11 +101,52 @@ class BrowserHelper:
             self.logger.error(f"Error while dismissing cookie banner: {e}")
             return False
 
+    async def _has_cookie_banner(self, page: Page) -> bool:
+        """Return True only when a known cookie/consent surface is visibly present."""
+        try:
+            for selector in OddsPortalSelectors.COOKIE_BANNER_PRESENCE_SELECTORS:
+                try:
+                    elements = await page.query_selector_all(selector)
+                    for element in elements[:5]:
+                        if await element.is_visible():
+                            return True
+                except PlaywrightError:
+                    continue
+            return False
+        except Exception:
+            return False
+
+    async def _is_inside_cookie_banner(self, page: Page, element) -> bool:
+        """Check whether an element belongs to a visible cookie banner/consent surface."""
+        try:
+            return bool(
+                await element.evaluate(
+                    """
+                    (el, selectors) => {
+                        for (const selector of selectors) {
+                            const container = el.closest(selector);
+                            if (!container) continue;
+                            const style = window.getComputedStyle(container);
+                            const visible = style && style.display !== 'none' && style.visibility !== 'hidden';
+                            if (visible) return true;
+                        }
+                        return false;
+                    }
+                    """,
+                    OddsPortalSelectors.COOKIE_BANNER_CONTAINER_SELECTORS,
+                )
+            )
+        except Exception:
+            return False
+
     async def dismiss_overlays(self, page: Page) -> bool:
         """Try to dismiss or neutralize obstructive overlays/modals that intercept clicks."""
         dismissed_any = False
 
         try:
+            if await self._has_cookie_banner(page):
+                await self.dismiss_cookie_banner(page)
+
             for dismiss_selector in OddsPortalSelectors.OVERLAY_DISMISS_SELECTORS:
                 try:
                     elements = await page.query_selector_all(dismiss_selector)
@@ -105,6 +154,10 @@ class BrowserHelper:
                         try:
                             if not await element.is_visible():
                                 continue
+
+                            if await self._is_inside_cookie_banner(page, element):
+                                continue
+
                             text = (await element.text_content() or "").strip()
                             self.logger.info(
                                 f"Attempting overlay dismiss via '{dismiss_selector}'"
