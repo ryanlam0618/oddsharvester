@@ -1,5 +1,5 @@
 # Stage 1: Base setup with dependencies
-FROM mcr.microsoft.com/playwright/python:v1.49.1-noble AS base
+FROM mcr.microsoft.com/playwright/python:v1.57.0-noble AS base
 
 # Install uv globally
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
