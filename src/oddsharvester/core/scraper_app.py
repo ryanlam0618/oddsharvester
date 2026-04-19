@@ -43,6 +43,9 @@ async def run_scraper(
     bookies_filter: str = BookiesFilter.ALL.value,
     period: str | None = None,
     request_delay: float = DEFAULT_REQUEST_DELAY_S,
+    checkpoint_file_path: str | None = None,
+    checkpoint_storage_type: str = "local",
+    checkpoint_storage_format: str = "json",
 ) -> ScrapeResult | None:
     """
     Runs the scraping process and handles execution.
@@ -62,7 +65,7 @@ async def run_scraper(
         f"browser_locale_timezone={browser_locale_timezone}, browser_timezone_id={browser_timezone_id}, "
         f"scrape_odds_history={scrape_odds_history}, target_bookmaker={target_bookmaker}, "
         f"headless={headless}, preview_submarkets_only={preview_submarkets_only}, "
-        f"bookies_filter={bookies_filter}, period={period}"
+        f"bookies_filter={bookies_filter}, period={period}, checkpoint_file_path={checkpoint_file_path}"
     )
 
     proxy_manager = ProxyManager(proxy_url=proxy_url, proxy_user=proxy_user, proxy_pass=proxy_pass)
@@ -131,6 +134,9 @@ async def run_scraper(
                     bookies_filter=bookies_filter_enum,
                     period=period_enum,
                     request_delay=request_delay,
+                    checkpoint_file_path=checkpoint_file_path,
+                    checkpoint_storage_type=checkpoint_storage_type,
+                    checkpoint_storage_format=checkpoint_storage_format,
                 )
             else:
                 return await _scrape_multiple_leagues(
@@ -146,6 +152,9 @@ async def run_scraper(
                     bookies_filter=bookies_filter_enum,
                     period=period_enum,
                     request_delay=request_delay,
+                    checkpoint_file_path=checkpoint_file_path,
+                    checkpoint_storage_type=checkpoint_storage_type,
+                    checkpoint_storage_format=checkpoint_storage_format,
                 )
 
         elif command == CommandEnum.UPCOMING_MATCHES:

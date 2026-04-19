@@ -51,6 +51,13 @@ class OddsPortalSelectors:
         ".overlay-bookie-modal",
     ]
 
+    BOOKIE_OVERLAY_SELECTORS: ClassVar[list[str]] = [
+        ".overlay-bookie-modal",
+        ".overlay-bookie-modal.flex-center",
+        "div[class*='overlay-bookie-modal']",
+        "div[class*='overlay'][class*='bookie']",
+    ]
+
     # Dismiss / close actions for overlays
     OVERLAY_DISMISS_SELECTORS: ClassVar[list[str]] = [
         "#onetrust-accept-btn-handler",
@@ -60,6 +67,13 @@ class OddsPortalSelectors:
         "[role='button'][aria-label='Close']",
         ".modal button",
         ".modal [role='button']",
+        ".overlay-bookie-modal button",
+        ".overlay-bookie-modal [role='button']",
+    ]
+
+    BOOKIE_OVERLAY_DISMISS_SELECTORS: ClassVar[list[str]] = [
+        ".overlay-bookie-modal button[aria-label='Close']",
+        ".overlay-bookie-modal [role='button'][aria-label='Close']",
         ".overlay-bookie-modal button",
         ".overlay-bookie-modal [role='button']",
     ]

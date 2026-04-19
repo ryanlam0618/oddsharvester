@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 import sys
 
 import click
@@ -47,6 +48,9 @@ def historic(ctx, **kwargs):
         season = None
 
     try:
+        checkpoint_enabled = os.getenv("OH_CHECKPOINT_SAVE", "1").lower() not in {"0", "false", "no"}
+        file_path = kwargs.get("file_path")
+
         scraped_data = asyncio.run(
             run_scraper(
                 command="scrape_historic",
@@ -70,16 +74,20 @@ def historic(ctx, **kwargs):
                 bookies_filter=bookies_filter.value if bookies_filter else "all",
                 period=kwargs.get("period"),
                 request_delay=kwargs.get("request_delay", 1.0),
+                checkpoint_file_path=file_path if checkpoint_enabled else None,
+                checkpoint_storage_type=storage.value if storage else "local",
+                checkpoint_storage_format=storage_format.value if storage_format else "json",
             )
         )
 
         if scraped_data and scraped_data.success:
-            store_data(
-                storage_type=storage.value if storage else "local",
-                data=scraped_data.success,
-                storage_format=storage_format.value if storage_format else "json",
-                file_path=kwargs.get("file_path"),
-            )
+            if not (checkpoint_enabled and file_path):
+                store_data(
+                    storage_type=storage.value if storage else "local",
+                    data=scraped_data.success,
+                    storage_format=storage_format.value if storage_format else "json",
+                    file_path=file_path,
+                )
             click.echo(
                 f"Successfully scraped {scraped_data.stats.successful} matches "
                 f"({scraped_data.stats.failed} failed, {scraped_data.stats.success_rate:.1f}% success rate)."

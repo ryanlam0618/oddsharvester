@@ -373,6 +373,9 @@ class BaseScraper:
         period: Enum | None = None,
         retry_config: RetryConfig | None = None,
         request_delay: float = DEFAULT_REQUEST_DELAY_S,
+        checkpoint_file_path: str | None = None,
+        checkpoint_storage_type: str = "local",
+        checkpoint_storage_format: str = "json",
     ) -> ScrapeResult:
         """
         Extract odds for a list of match links concurrently.
@@ -420,6 +423,7 @@ class BaseScraper:
             )
 
         request_counter = {"count": 0}
+        checkpoint_lock = asyncio.Lock()
 
         async def scrape_with_semaphore(link: str) -> tuple[str, dict[str, Any] | None, FailedUrl | None]:
             async with semaphore:
@@ -489,6 +493,21 @@ class BaseScraper:
             if data is not None:
                 result.success.append(data)
                 result.stats.successful += 1
+                if checkpoint_file_path:
+                    async with checkpoint_lock:
+                        try:
+                            store_data(
+                                storage_type=checkpoint_storage_type,
+                                data=[data],
+                                storage_format=checkpoint_storage_format,
+                                file_path=checkpoint_file_path,
+                            )
+                            self.logger.info(f"Checkpoint saved 1 record to {checkpoint_file_path}")
+                        except Exception as checkpoint_error:
+                            self.logger.error(
+                                f"Checkpoint save failed for {checkpoint_file_path}: {checkpoint_error}",
+                                exc_info=True,
+                            )
             elif failed_url is not None:
                 result.failed.append(failed_url)
                 result.stats.failed += 1
