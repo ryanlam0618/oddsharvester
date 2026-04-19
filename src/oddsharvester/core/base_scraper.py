@@ -338,9 +338,31 @@ class BaseScraper:
                         continue
 
                 for link in row.find_all("a", href=True):
-                    href = link["href"]
-                    if len(href.strip("/").split("/")) <= 3:
+                    href = link["href"].strip()
+                    if not href.startswith("/"):
                         continue
+
+                    href_lower = href.lower()
+                    if any(
+                        blocked in href_lower
+                        for blocked in (
+                            "/h2h/",
+                            "/results/",
+                            "/standings/",
+                            "/outrights/",
+                            "/draw/",
+                            "/compare-odds/",
+                        )
+                    ):
+                        continue
+
+                    parts = [part for part in href.strip("/").split("/") if part]
+                    if len(parts) < 5:
+                        continue
+
+                    if "#" not in href:
+                        continue
+
                     full_url = f"{ODDSPORTAL_BASE_URL}{href}"
                     if full_url not in seen:
                         seen.add(full_url)
