@@ -545,6 +545,9 @@ class BaseScraper:
         self.logger.info(f"Scraping match: {match_link}")
 
         try:
+            # Block OneTrust scripts before navigation to prevent bot detection
+            await self.playwright_manager.block_one_trust_for_page(page)
+
             # Navigate to the match page with extended timeout
             await page.goto(match_link, timeout=NAVIGATION_TIMEOUT_MS, wait_until="domcontentloaded")
 

@@ -1,7 +1,7 @@
 import logging
 import random
 
-from playwright.async_api import async_playwright, Page
+from playwright.async_api import async_playwright, Page, Route
 
 from oddsharvester.utils.constants import PLAYWRIGHT_BROWSER_ARGS, PLAYWRIGHT_BROWSER_ARGS_DOCKER
 from oddsharvester.utils.utils import is_running_in_docker
@@ -219,19 +219,35 @@ class PlaywrightManager:
         
         OneTrust has sophisticated bot detection that our stealth script can't fully bypass.
         This method blocks OneTrust scripts from loading, preventing bot detection from running.
+        Uses a catch-all handler to intercept all requests and abort those to OneTrust domains.
         """
-        patterns = [
-            "**/*onetrust*",
-            "**/*cookielaw*",
-            "**/*otSDKStub*",
-            "**/*consent*",
+        one_trust_domains = [
+            "onetrust",
+            "cookielaw",
+            "optanon",
+            "cookiepro",
+            "trustarc",
         ]
         
-        for pattern in patterns:
-            try:
-                await page.route(pattern, lambda route: route.abort())
-            except Exception as e:
-                self.logger.debug(f"Failed to block pattern {pattern}: {e}")
+        async def handle_route(route: Route) -> None:
+            """Abort requests to OneTrust and related domains."""
+            url = route.request.url
+            url_lower = url.lower()
+            
+            # Check if URL contains any OneTrust-related domain
+            for domain in one_trust_domains:
+                if domain in url_lower:
+                    await route.abort()
+                    return
+            
+            # Allow all other requests
+            await route.continue_()
+        
+        try:
+            # Use catch-all pattern to intercept ALL requests
+            await page.route("**/*", handle_route)
+        except Exception as e:
+            self.logger.debug(f"Failed to block OneTrust scripts: {e}")
 
     async def block_one_trust_for_page(self, page: Page) -> None:
         """Block OneTrust scripts for a specific page (call before navigation)."""

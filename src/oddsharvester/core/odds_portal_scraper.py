@@ -271,6 +271,9 @@ class OddsPortalScraper(BaseScraper):
         if not current_page:
             raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
 
+        # Block OneTrust scripts BEFORE navigation to prevent bot detection
+        await self.playwright_manager.block_one_trust_for_page(current_page)
+
         await current_page.goto(ODDSPORTAL_BASE_URL, timeout=GOTO_TIMEOUT_LONG_MS, wait_until="domcontentloaded")
         await self._prepare_page_for_scraping(page=current_page)
         return await self.extract_match_odds(
@@ -406,6 +409,10 @@ class OddsPortalScraper(BaseScraper):
 
             try:
                 tab = await self.playwright_manager.context.new_page()
+                
+                # Block OneTrust scripts BEFORE navigation on new tab
+                await self.playwright_manager.block_one_trust_for_page(tab)
+                
                 self.logger.debug(f"Created new tab for page {page_number}")
 
                 page_url = f"{base_url}#/page/{page_number}"
