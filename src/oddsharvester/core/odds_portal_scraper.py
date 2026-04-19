@@ -187,6 +187,8 @@ class OddsPortalScraper(BaseScraper):
             checkpoint_file_path=checkpoint_file_path,
             checkpoint_storage_type=checkpoint_storage_type,
             checkpoint_storage_format=checkpoint_storage_format,
+            season_year=season_year,
+            season_end_year=season_end_year,
         )
 
     async def scrape_upcoming(

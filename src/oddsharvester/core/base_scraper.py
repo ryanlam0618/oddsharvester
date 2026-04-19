@@ -439,6 +439,8 @@ class BaseScraper:
         checkpoint_file_path: str | None = None,
         checkpoint_storage_type: str = "local",
         checkpoint_storage_format: str = "json",
+        season_year: int | None = None,
+        season_end_year: int | None = None,
     ) -> ScrapeResult:
         """
         Extract odds for a list of match links concurrently.
@@ -533,8 +535,43 @@ class BaseScraper:
 
                     if retry_result.success and retry_result.result is not None:
                         self.logger.info(f"Successfully scraped match link: {link} (attempts: {retry_result.attempts})")
-                        await save_checkpoint(retry_result.result)
-                        return (link, retry_result.result, None)
+
+                        # Post-scrape season validation: check if match_date is within expected season range
+                        if season_year is not None and season_end_year is not None:
+                            match_date_str = retry_result.result.get("match_date", "")
+                            if match_date_str:
+                                try:
+                                    dt = datetime.strptime(match_date_str[:19], "%Y-%m-%d %H:%M:%S")
+                                    d = dt.date()
+                                    season_start = date(season_year, 8, 1)
+                                    season_end = date(season_end_year, 5, 31)
+                                    if not (season_start <= d <= season_end):
+                                        self.logger.warning(
+                                            f"Match {link} date {d} outside season range "
+                                            f"{season_year}-{season_end_year}, skipping"
+                                        )
+                                        retry_result.result = None  # Treat as failed (wrong season)
+                                except (ValueError, TypeError) as e:
+                                    self.logger.debug(
+                                        f"Could not parse match_date '{match_date_str}' for validation: {e}"
+                                    )
+
+                        if retry_result.result is not None:
+                            await save_checkpoint(retry_result.result)
+                            return (link, retry_result.result, None)
+                        else:
+                            # Season validation failed - return as permanent failure (not retryable)
+                            failed_url = FailedUrl(
+                                url=link,
+                                error_type="SEASON_MISMATCH",
+                                error_message=(
+                                    f"Match date outside season range {season_year}-{season_end_year}. "
+                                    f"This is likely a wrong-season h2h redirect."
+                                ),
+                                attempts=retry_result.attempts,
+                                is_retryable=False,  # No point retrying, h2h page will return same wrong season
+                            )
+                            return (link, None, failed_url)
                     else:
                         # Scraping failed after retries
                         error_type = retry_result.error_type or classify_error(retry_result.last_error)
