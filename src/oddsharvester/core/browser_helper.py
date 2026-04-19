@@ -83,12 +83,20 @@ class BrowserHelper:
                         + (f" (text='{text[:60]}')" if text else "")
                     )
                     if await self._safe_click(page=page, element=button, reason=f"cookie banner via {candidate}"):
-                        await page.wait_for_timeout(500)
+                        await page.wait_for_timeout(800)
                         if not await self._has_cookie_banner(page):
                             return True
                 except Exception as inner_error:
                     self.logger.debug(f"Cookie banner selector '{candidate}' failed: {inner_error}")
                     continue
+
+            self.logger.info("Cookie banner still present after click attempts. Applying hard cleanup.")
+            await self._force_accept_and_remove_cookie_banner(page)
+            await page.wait_for_timeout(500)
+
+            if not await self._has_cookie_banner(page):
+                self.logger.info("Cookie banner removed by hard cleanup.")
+                return True
 
             self.logger.info("Cookie banner still present after dismiss attempts.")
             return False
@@ -100,6 +108,51 @@ class BrowserHelper:
         except Exception as e:
             self.logger.error(f"Error while dismissing cookie banner: {e}")
             return False
+
+    async def _force_accept_and_remove_cookie_banner(self, page: Page) -> None:
+        """Apply a hard fallback for stubborn OneTrust/cookie banners."""
+        try:
+            await page.evaluate(
+                """
+                (config) => {
+                    const clickIfPresent = (selector) => {
+                        const el = document.querySelector(selector);
+                        if (!el) return false;
+                        try { el.click(); } catch (_) {}
+                        try { el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })); } catch (_) {}
+                        return true;
+                    };
+
+                    for (const selector of config.acceptSelectors) {
+                        clickIfPresent(selector);
+                    }
+
+                    for (const selector of config.removeSelectors) {
+                        for (const el of document.querySelectorAll(selector)) {
+                            try { el.remove(); } catch (_) {}
+                        }
+                    }
+
+                    for (const el of document.querySelectorAll('[style*="overflow: hidden"], [style*="overflow:hidden"]')) {
+                        try { el.style.removeProperty('overflow'); } catch (_) {}
+                    }
+
+                    document.documentElement.classList.remove('onetrust-consent-sdk', 'onetrust-lock', 'modal-open');
+                    document.body.classList.remove('onetrust-consent-sdk', 'onetrust-lock', 'modal-open');
+                    document.documentElement.style.removeProperty('overflow');
+                    document.body.style.removeProperty('overflow');
+                    document.documentElement.style.removeProperty('pointer-events');
+                    document.body.style.removeProperty('pointer-events');
+                }
+                """,
+                {
+                    "acceptSelectors": OddsPortalSelectors.COOKIE_BANNER_SELECTORS,
+                    "removeSelectors": OddsPortalSelectors.COOKIE_BANNER_CONTAINER_SELECTORS
+                    + [".onetrust-pc-dark-filter", "#onetrust-banner-sdk", "#onetrust-consent-sdk"],
+                },
+            )
+        except Exception as e:
+            self.logger.debug(f"Hard cookie cleanup failed: {e}")
 
     async def _has_cookie_banner(self, page: Page) -> bool:
         """Return True only when a known cookie/consent surface is visibly present."""
