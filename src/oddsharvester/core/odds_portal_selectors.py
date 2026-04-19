@@ -9,12 +9,9 @@ class OddsPortalSelectors:
     COOKIE_BANNER_SELECTORS: ClassVar[list[str]] = [
         "#onetrust-accept-btn-handler",
         "button#onetrust-accept-btn-handler",
-        "#onetrust-banner-sdk button:has-text('Accept')",
-        "#onetrust-banner-sdk button:has-text('Accept All')",
-        "#onetrust-consent-sdk button:has-text('Accept')",
-        "#onetrust-consent-sdk button:has-text('Accept All')",
+        "#onetrust-banner-sdk #onetrust-accept-btn-handler",
+        "#onetrust-consent-sdk #onetrust-accept-btn-handler",
         "button:has-text('I Agree')",
-        "button:has-text('Agree')",
         "button:has-text('OK')",
         "button:has-text('Got it')",
     ]
@@ -56,10 +53,9 @@ class OddsPortalSelectors:
 
     # Dismiss / close actions for overlays
     OVERLAY_DISMISS_SELECTORS: ClassVar[list[str]] = [
-        "#onetrust-banner-sdk button:has-text('Accept')",
-        "#onetrust-banner-sdk button:has-text('Accept All')",
-        "#onetrust-consent-sdk button:has-text('Accept')",
-        "#onetrust-consent-sdk button:has-text('Accept All')",
+        "#onetrust-accept-btn-handler",
+        "#onetrust-banner-sdk #onetrust-accept-btn-handler",
+        "#onetrust-consent-sdk #onetrust-accept-btn-handler",
         "button[aria-label='Close']",
         "[role='button'][aria-label='Close']",
         ".modal button",
