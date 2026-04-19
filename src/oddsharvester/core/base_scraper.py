@@ -152,6 +152,60 @@ class BaseScraper:
         self.market_extractor = market_extractor
         self.preview_submarkets_only = preview_submarkets_only
 
+    async def _find_odds_format_dropdown_button(self, page: Page):
+        selectors = [
+            "div.group > button.gap-2",
+            "button.gap-2:has-text('Odds')",
+            "button:has-text('Decimal Odds')",
+            "button:has-text('Fractional Odds')",
+            "button:has-text('Money Line Odds')",
+            "button:has-text('Hong Kong Odds')",
+        ]
+
+        for selector in selectors:
+            try:
+                handle = await page.query_selector(selector)
+                if handle is not None:
+                    self.logger.info(f"Found odds format control via selector: {selector}")
+                    return handle, selector
+            except Exception as e:
+                self.logger.debug(f"Ignoring odds format selector '{selector}' due to error: {e}")
+
+        return None, None
+
+    async def _detect_current_odds_format(self, page: Page) -> str | None:
+        selectors = [
+            "div.group > button.gap-2",
+            "button.gap-2:has-text('Odds')",
+            "button:has-text('Decimal Odds')",
+            "button:has-text('Fractional Odds')",
+            "button:has-text('Money Line Odds')",
+            "button:has-text('Hong Kong Odds')",
+        ]
+
+        for selector in selectors:
+            try:
+                handle = await page.query_selector(selector)
+                if handle is None:
+                    continue
+                text = (await handle.inner_text()).strip()
+                if text:
+                    self.logger.info(f"Current odds format inferred from selector '{selector}': {text}")
+                    return text
+            except Exception as e:
+                self.logger.debug(f"Could not read odds format text from selector '{selector}': {e}")
+
+        try:
+            page_text = await page.locator("body").inner_text(timeout=5000)
+            for candidate in OddsFormat:
+                if candidate.value in page_text:
+                    self.logger.info(f"Current odds format inferred from page text: {candidate.value}")
+                    return candidate.value
+        except Exception as e:
+            self.logger.debug(f"Could not inspect page text for odds format: {e}")
+
+        return None
+
     async def set_odds_format(self, page: Page, odds_format: OddsFormat = OddsFormat.DECIMAL_ODDS):
         """
         Sets the odds format on the page.
@@ -162,16 +216,31 @@ class BaseScraper:
         """
         try:
             self.logger.info(f"Setting odds format: {odds_format.value}")
-            button_selector = "div.group > button.gap-2"
-            await page.wait_for_selector(button_selector, state="attached", timeout=ODDS_FORMAT_SELECTOR_TIMEOUT_MS)
-            dropdown_button = await page.query_selector(button_selector)
-            if dropdown_button is None:
-                msg = f"Odds format dropdown button not found for selector: {button_selector}"
+
+            current_format = await self._detect_current_odds_format(page)
+            if current_format == odds_format.value:
+                self.logger.info(f"Odds format is already set to '{odds_format.value}'. Skipping.")
+                return
+
+            try:
+                await page.wait_for_selector("div.group", state="attached", timeout=ODDS_FORMAT_SELECTOR_TIMEOUT_MS)
+            except TimeoutError:
+                self.logger.warning("Odds format container 'div.group' did not appear before timeout; trying fallback detection.")
+
+            dropdown_button, button_selector = await self._find_odds_format_dropdown_button(page)
+            if dropdown_button is None or button_selector is None:
+                current_format = await self._detect_current_odds_format(page)
+                if current_format == odds_format.value:
+                    self.logger.info(
+                        f"Odds format control not found, but page already appears to be '{odds_format.value}'. Skipping."
+                    )
+                    return
+
+                msg = "Odds format dropdown button not found via known selectors."
                 self.logger.error(msg)
                 raise RuntimeError(msg)
 
-            # Check if the desired format is already selected
-            current_format = await dropdown_button.inner_text()
+            current_format = (await dropdown_button.inner_text()).strip()
             self.logger.info(f"Current odds format detected: {current_format}")
 
             if current_format == odds_format.value:
@@ -183,8 +252,16 @@ class BaseScraper:
             format_option_selector = "div.group > div.dropdown-content > ul > li > a"
             format_options = await page.query_selector_all(format_option_selector)
 
+            if not format_options:
+                current_format = await self._detect_current_odds_format(page)
+                if current_format == odds_format.value:
+                    self.logger.info(
+                        f"Dropdown options not rendered, but current page already appears to be '{odds_format.value}'. Skipping."
+                    )
+                    return
+
             for option in format_options:
-                option_text = await option.inner_text()
+                option_text = (await option.inner_text()).strip()
 
                 if odds_format.value.lower() in option_text.lower():
                     self.logger.info(f"Selecting odds format: {option_text}")
