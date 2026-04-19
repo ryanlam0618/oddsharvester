@@ -141,6 +141,60 @@ class BrowserHelper:
         except Exception as e:
             self.logger.debug(f"Failed to set consent cookie via JS: {e}")
 
+    async def set_consent_cookie_via_page_js(self, page: Page) -> None:
+        """Set consent cookies and hide banner elements via JavaScript on the page.
+        
+        This should be called after each page navigation to ensure consent cookies are set
+        and banner elements are hidden.
+        """
+        try:
+            await page.evaluate(
+                """
+                () => {
+                    try {
+                        // OneTrust consent cookie - set to accept all categories
+                        const consentValue = 'groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CC0006%3A1%2CC0007%3A1%2CC0008%3A1%2CC0009%3A1%2CC0010%3A1%2CC0011%3A1%2CC0012%3A1%2CC0013%3A1%2CC0014%3A1%2CC0015%3A1%2CC0016%3A1%2CC0017%3A1%2CC0018%3A1%2CC0019%3A1%2CC0020%3A1%2CC0021%3A1%2CC0022%3A1%2CC0023%3A1%2CC0024%3A1%2CC0025%3A1';
+                        
+                        // Set consent cookies for all relevant domains
+                        document.cookie = 'OptanonConsent=' + consentValue + '; domain=.oddsportal.com; path=/; max-age=31536000';
+                        document.cookie = 'OptanonConsent=' + consentValue + '; domain=www.oddsportal.com; path=/; max-age=31536000';
+                        document.cookie = 'OptanonAlertBoxClosed=Sun%20Apr%2019%202026%2000%3A00%3A00%20GMT%2B0000%20(Coordinated%20Universal%20Time); domain=.oddsportal.com; path=/; max-age=31536000';
+                        
+                        // Hide banner elements if they exist
+                        const elementsToHide = [
+                            '#onetrust-banner-sdk',
+                            '#onetrust-consent-sdk',
+                            '.onetrust-pc-dark-filter',
+                            '[id*="onetrust-banner"]',
+                            '[id*="onetrust-consent"]'
+                        ];
+                        
+                        elementsToHide.forEach(selector => {
+                            try {
+                                const elements = document.querySelectorAll(selector);
+                                elements.forEach(el => {
+                                    el.style.display = 'none';
+                                    el.style.visibility = 'hidden';
+                                    el.style.opacity = '0';
+                                });
+                            } catch(e) {}
+                        });
+                        
+                        // Patch OneTrust if it exists
+                        if (window.Optanon) {
+                            window.Optanon.IsAlertBoxClosed = () => true;
+                            window.Optanon.CloseAlertBox = () => {};
+                            if (window.Optanon.OnConsentChanged) {
+                                window.Optanon.OnConsentChanged(() => {});
+                            }
+                        }
+                    } catch(e) {}
+                }
+                """
+            )
+        except Exception as e:
+            self.logger.debug(f"Failed to set consent cookies on page: {e}")
+
     async def set_consent_cookies_for_context(self, context) -> None:
         """Set OneTrust consent cookies in browser context before navigation.
         

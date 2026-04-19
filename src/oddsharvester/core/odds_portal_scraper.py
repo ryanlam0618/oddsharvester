@@ -289,6 +289,9 @@ class OddsPortalScraper(BaseScraper):
         Args:
             page: Playwright page instance.
         """
+        # Set consent cookies before dismissing banner (needed for each page navigation)
+        await self.browser_helper.set_consent_cookie_via_page_js(page)
+        
         await self.set_odds_format(page=page)
         await self.browser_helper.dismiss_cookie_banner(page=page)
         await self.browser_helper.dismiss_overlays(page=page)
