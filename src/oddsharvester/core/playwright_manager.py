@@ -56,6 +56,53 @@ STEALTH_SCRIPT = """
     delete window.__playwright_evaluator__;
     delete window.__playwright_unpatched__;
     
+    // Canvas fingerprinting protection
+    const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+    const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+    
+    CanvasRenderingContext2D.prototype.getImageData = function(sx, sy, sw, sh) {
+        const imageData = originalGetImageData.call(this, sx, sy, sw, sh);
+        // Add small random noise to pixels to simulate human behavior
+        const data = imageData.data;
+        for (let i = 0; i < data.length; i += 4) {
+            data[i] = Math.min(255, data[i] + Math.floor(Math.random() * 3 - 1));
+            data[i+1] = Math.min(255, data[i+1] + Math.floor(Math.random() * 3 - 1));
+            data[i+2] = Math.min(255, data[i+2] + Math.floor(Math.random() * 3 - 1));
+        }
+        return imageData;
+    };
+    
+    // WebGL fingerprinting protection
+    const getParameter = WebGLRenderingContext.prototype.getParameter;
+    WebGLRenderingContext.prototype.getParameter = function(param) {
+        // Return fake values for renderer and vendor
+        if (param === 37445) return 'Intel Inc.';  // UNMASKED_VENDOR_WEBGL
+        if (param === 37446) return 'Intel Iris OpenGL Engine';  // UNMASKED_RENDERER_WEBGL
+        return getParameter.call(this, param);
+    };
+    
+    const getExtension = WebGLRenderingContext.prototype.getExtension;
+    WebGLRenderingContext.prototype.getExtension = function(name) {
+        if (name === 'WEBGL_debug_renderer_info') return null;  // Block this extension
+        return getExtension.call(this, name);
+    };
+    
+    // AudioContext fingerprinting protection
+    const originalCreateDynamicsCompressor = AudioContext.prototype.createDynamicsCompressor;
+    AudioContext.prototype.createDynamicsCompressor = function() {
+        try {
+            const compressor = originalCreateDynamicsCompressor.call(this);
+            // Add small random noise to prevent fingerprinting
+            const originalGetValueAtTime = compressor.threshold.getValueAtTime;
+            compressor.threshold.getValueAtTime = function(value, time) {
+                return originalGetValueAtTime.call(this, value + (Math.random() * 0.1 - 0.05), time);
+            };
+            return compressor;
+        } catch(e) {
+            return originalCreateDynamicsCompressor.call(this);
+        }
+    };
+    
     // Patch OneTrust if it exists
     if (window.Optanon) {
         window.Optanon.IsAlertBoxClosed = () => true;
@@ -155,11 +202,6 @@ class PlaywrightManager:
 
             # Add anti-detection script
             await self.context.add_init_script(STEALTH_SCRIPT)
-
-            # Block OneTrust/cookie scripts to prevent bot detection
-            await self.context.route("**/onetrust*/**", lambda route: route.abort())
-            await self.context.route("**/cookiebot*/**", lambda route: route.abort())
-            await self.context.route("**/cookies*/**", lambda route: route.abort())
 
             self.page = await self.context.new_page()
             self.logger.info("Playwright initialized successfully.")
