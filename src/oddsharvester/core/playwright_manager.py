@@ -1,7 +1,7 @@
 import logging
 import random
 
-from playwright.async_api import async_playwright
+from playwright.async_api import async_playwright, Page
 
 from oddsharvester.utils.constants import PLAYWRIGHT_BROWSER_ARGS, PLAYWRIGHT_BROWSER_ARGS_DOCKER
 from oddsharvester.utils.utils import is_running_in_docker
