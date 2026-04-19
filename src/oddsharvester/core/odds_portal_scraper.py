@@ -916,3 +916,293 @@ class OddsPortalScraper(BaseScraper):
         except Exception as e:
             self.logger.debug(f"Error parsing event row: {e}")
             return None
+
+    async def _click_betting_tab(self, page: Page, tab_name: str) -> bool:
+        """
+        Click on a betting tab (e.g., 'Over/Under', 'Asian Handicap').
+
+        Args:
+            page: Playwright page object.
+            tab_name: Name of the tab to click ('Over/Under', 'Asian Handicap', etc.)
+
+        Returns:
+            bool: True if tab was found and clicked, False otherwise.
+        """
+        try:
+            # Click on the inner element (div or span) that contains the tab text
+            # Do NOT click on li elements as they break the page
+            result = await page.evaluate(
+                f"""
+                () => {{
+                    const nav = document.querySelector('[data-testid="bet-types-nav"]');
+                    if (!nav) return {{ found: false, error: 'nav not found' }};
+
+
+                    // Look for inner elements (div or span) containing the tab name
+                    const allElements = nav.querySelectorAll('div, span');
+                    for (const el of allElements) {{
+                        const text = el.textContent;
+                        if (text && text.includes("{tab_name}")) {{
+                            el.click();
+                            return {{ found: true, text: text.trim() }};
+                        }}
+                    }}
+
+
+                    return {{ found: false, error: 'Tab not found: {tab_name}' }};
+                }}
+                """
+            )
+
+            if result.get('found'):
+                self.logger.debug(f"Clicked tab: {tab_name}")
+                # Wait for content to update after clicking
+                await page.wait_for_timeout(3000)
+                return True
+            else:
+                self.logger.warning(f"Could not click tab '{tab_name}': {result.get('error')}")
+                return False
+
+        except Exception as e:
+            self.logger.error(f"Error clicking betting tab '{tab_name}': {e}")
+            return False
+
+    async def _extract_ou_odds(self, page: Page) -> list[dict[str, Any]]:
+        """
+        Extract Over/Under odds from the current h2h page.
+
+        The OU table shows multiple lines with their Over and Under odds:
+        - Line 3.5: Over @ 1.78, Under @ 4.98
+        - Line 3.0: Over @ 1.70, Under @ 4.80
+
+        Args:
+            page: Playwright page object (should be on Over/Under tab).
+
+        Returns:
+            List of dicts with 'line', 'over', 'under' keys.
+        """
+        try:
+            ou_data = await page.evaluate(
+                r"""
+                () => {
+                    const results = [];
+
+                    // Find all odd-container elements
+                    const oddContainers = document.querySelectorAll('[data-testid="odd-container"]');
+                    const values = [];
+
+                    oddContainers.forEach((el) => {
+                        const text = el.textContent.trim();
+                        const val = parseFloat(text);
+                        if (!isNaN(val) && val >= 1.0 && val <= 20.0) {
+                            values.push(val);
+                        }
+                    });
+
+                    // The first 3 values are 1X2 odds, skip them
+                    // Then OU odds follow in groups of 3: Over, Line, Under
+                    for (let i = 3; i + 2 < values.length; i += 3) {
+                        const over = values[i];
+                        const line = values[i + 1];
+                        const under = values[i + 2];
+
+                        // Only include if it looks like a valid OU pattern
+                        // Line should be between 2.0 and 5.0
+                        if (line >= 2.0 && line <= 5.0) {
+                            results.push({
+                                over: over,
+                                line: line,
+                                under: under
+                            });
+                        }
+                    }
+
+                    // Remove duplicates based on line value
+                    const unique = [];
+                    const seen = new Set();
+                    for (const r of results) {
+                        const key = r.line.toFixed(2);
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            unique.push(r);
+                        }
+                    }
+
+                    return unique.sort((a, b) => a.line - b.line);
+                }
+                """
+            )
+
+            if ou_data:
+                self.logger.debug(f"Extracted {len(ou_data)} OU lines")
+                # Return only the first few most relevant lines (usually the main lines)
+                return ou_data[:10]
+            else:
+                return []
+
+        except Exception as e:
+            self.logger.error(f"Error extracting OU odds: {e}")
+            return []
+
+    async def _extract_ah_odds(self, page: Page) -> list[dict[str, Any]]:
+        """
+        Extract Asian Handicap odds from the current h2h page.
+
+        The AH table shows handicap lines with their home and away odds:
+        - Handicap -0.5: Home @ 1.95, Away @ 1.95
+        - Handicap +0.5: Home @ 1.85, Away @ 2.05
+
+        Args:
+            page: Playwright page object (should be on Asian Handicap tab).
+
+        Returns:
+            List of dicts with 'handicap', 'home', 'away' keys.
+        """
+        try:
+            ah_data = await page.evaluate(
+                r"""
+                () => {
+                    const results = [];
+
+                    // After clicking the AH tab, extract data from the page
+                    // Find negative numbers (AH handicaps) in the page
+                    const body = document.body.innerText;
+                    const negativeMatches = body.match(/(-[0-9.]+)/g) || [];
+                    
+                    // Filter for valid AH handicap values
+                    const handicaps = negativeMatches
+                        .map(m => parseFloat(m))
+                        .filter(v => v < 0 && v >= -5.0);
+
+                    // Get odds from odd-container elements if available
+                    const oddContainers = document.querySelectorAll('[data-testid="odd-container"]');
+                    const oddsValues = [];
+                    oddContainers.forEach((el) => {
+                        const text = el.textContent.trim();
+                        const val = parseFloat(text);
+                        if (!isNaN(val) && val >= 1.0 && val <= 15.0) {
+                            oddsValues.push(val);
+                        }
+                    });
+
+                    // Pair odds with handicaps
+                    if (oddsValues.length > 0) {
+                        // Skip first 3 (1X2), then group by 3
+                        for (let i = 3; i + 2 < oddsValues.length && Math.floor(i / 3) < handicaps.length; i += 3) {
+                            const home = oddsValues[i];
+                            const away = oddsValues[i + 2];
+                            const handicapIdx = Math.floor(i / 3);
+                            const handicap = handicaps[handicapIdx];
+                            
+                            if (handicap !== undefined) {
+                                results.push({
+                                    handicap: handicap,
+                                    home: home,
+                                    away: away
+                                });
+                            }
+                        }
+                    }
+
+                    // Remove duplicates based on handicap value
+                    const unique = [];
+                    const seen = new Set();
+                    for (const r of results) {
+                        const key = r.handicap.toFixed(2);
+                        if (!seen.has(key)) {
+                            seen.add(key);
+                            unique.push(r);
+                        }
+                    }
+
+                    return unique.sort((a, b) => a.handicap - b.handicap);
+                }
+                """
+            )
+
+            if ah_data:
+                self.logger.debug(f"Extracted {len(ah_data)} AH lines")
+                return ah_data[:10]
+            else:
+                return []
+
+        except Exception as e:
+            self.logger.error(f"Error extracting AH odds: {e}")
+            return []
+
+    async def scrape_match_odds(self, h2h_url: str) -> dict[str, Any]:
+        """
+        Scrape all odds (1X2, Over/Under, Asian Handicap) from a match's h2h page.
+
+        Args:
+            h2h_url: The h2h page URL for the match.
+
+        Returns:
+            Dict containing odds data with keys:
+            - '1X2': { '1': float, 'X': float, '2': float }
+            - 'over_under': [ { 'line': float, 'over': float, 'under': float }, ... ]
+            - 'asian_handicap': [ { 'handicap': float, 'home': float, 'away': float }, ... ]
+        """
+        current_page = self.playwright_manager.page
+        if not current_page:
+            raise RuntimeError("Playwright has not been initialized.")
+
+        odds_data: dict[str, Any] = {
+            "1X2": {},
+            "over_under": [],
+            "asian_handicap": []
+        }
+
+        try:
+            # Set consent cookies
+            await self.browser_helper.set_consent_cookies_for_context(current_page.context)
+
+            # Navigate to h2h page
+            self.logger.debug(f"Navigating to h2h page: {h2h_url}")
+            await current_page.goto(h2h_url, timeout=60000, wait_until='domcontentloaded')
+            await current_page.wait_for_timeout(5000)
+
+            # Extract 1X2 odds (default view)
+            html = await current_page.content()
+            soup = BeautifulSoup(html, 'lxml')
+
+            # Find 1X2 odds in the default view
+            odd_containers = soup.find_all(attrs={"data-testid": re.compile(r"odd-container")})
+            if odd_containers:
+                odds_values = []
+                seen_texts = set()
+                for el in odd_containers:
+                    text = el.get_text(strip=True)
+                    if text not in seen_texts:
+                        try:
+                            val = float(text)
+                            if 1.0 <= val <= 50.0:
+                                odds_values.append(val)
+                                seen_texts.add(text)
+                        except ValueError:
+                            continue
+
+                if len(odds_values) >= 3:
+                    odds_data["1X2"] = {
+                        "1": odds_values[0],
+                        "X": odds_values[1],
+                        "2": odds_values[2]
+                    }
+
+            # Extract Over/Under odds
+            if await self._click_betting_tab(current_page, "Over/Under"):
+                ou_odds = await self._extract_ou_odds(current_page)
+                if ou_odds:
+                    odds_data["over_under"] = ou_odds
+
+            # Extract Asian Handicap odds
+            if await self._click_betting_tab(current_page, "Asian Handicap"):
+                ah_odds = await self._extract_ah_odds(current_page)
+                if ah_odds:
+                    odds_data["asian_handicap"] = ah_odds
+
+        except Exception as e:
+            self.logger.error(f"Error scraping match odds from {h2h_url}: {e}")
+
+        return odds_data
+
