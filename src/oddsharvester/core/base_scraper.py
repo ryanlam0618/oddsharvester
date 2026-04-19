@@ -165,6 +165,10 @@ class BaseScraper:
             button_selector = "div.group > button.gap-2"
             await page.wait_for_selector(button_selector, state="attached", timeout=ODDS_FORMAT_SELECTOR_TIMEOUT_MS)
             dropdown_button = await page.query_selector(button_selector)
+            if dropdown_button is None:
+                msg = f"Odds format dropdown button not found for selector: {button_selector}"
+                self.logger.error(msg)
+                raise RuntimeError(msg)
 
             # Check if the desired format is already selected
             current_format = await dropdown_button.inner_text()
@@ -189,13 +193,20 @@ class BaseScraper:
                     self.logger.info(f"Odds format changed to '{odds_format.value}'.")
                     return
 
-            self.logger.warning(f"Desired odds format '{odds_format.value}' not found in dropdown options.")
+            msg = f"Desired odds format '{odds_format.value}' not found in dropdown options."
+            self.logger.warning(msg)
+            raise RuntimeError(msg)
 
         except TimeoutError:
-            self.logger.error("Timeout while setting odds format. Dropdown may not have loaded.")
+            self.logger.error(
+                "Timeout while setting odds format. Dropdown may not have loaded.",
+                exc_info=True,
+            )
+            raise
 
         except Exception as e:
             self.logger.error(f"Error while setting odds format: {e}", exc_info=True)
+            raise
 
     async def extract_match_links(self, page: Page, date_filter: date | None = None) -> list[str]:
         """
