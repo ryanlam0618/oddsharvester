@@ -1,6 +1,7 @@
 """CLI command for scraping historical matches with full odds (1X2, OU, AH)."""
 
 import asyncio
+import json
 import logging
 import os
 import sys
@@ -17,9 +18,34 @@ from oddsharvester.core.playwright_manager import PlaywrightManager
 from oddsharvester.core.sport_market_registry import SportMarketRegistrar
 from oddsharvester.core.url_builder import URLBuilder
 from oddsharvester.storage.storage_manager import store_data
+from oddsharvester.utils.constants import DEFAULT_REQUEST_DELAY_S, GOTO_TIMEOUT_MS, ODDSPORTAL_BASE_URL
 from oddsharvester.utils.sport_market_constants import Sport
 
 logger = logging.getLogger(__name__)
+
+
+def load_cookies_from_file(cookies_path: str) -> list | None:
+    """
+    Load cookies from a JSON file.
+    
+    Args:
+        cookies_path: Path to the cookies JSON file.
+        
+    Returns:
+        List of cookie dictionaries, or None if file doesn't exist.
+    """
+    if not os.path.exists(cookies_path):
+        logger.warning(f"Cookies file not found: {cookies_path}")
+        return None
+    
+    try:
+        with open(cookies_path, 'r') as f:
+            cookies = json.load(f)
+        logger.info(f"Loaded {len(cookies)} cookies from {cookies_path}")
+        return cookies
+    except Exception as e:
+        logger.error(f"Error loading cookies from {cookies_path}: {e}")
+        return None
 
 
 @click.command("scrape-full")
@@ -71,6 +97,12 @@ logger = logging.getLogger(__name__)
     is_flag=True,
     default=True,
     help="Include Asian Handicap odds (default: true).",
+)
+@click.option(
+    "--cookies",
+    type=click.Path(exists=True),
+    default="/home/openclaw/.openclaw/workspace/projects/OddsHarvester/cookies.json",
+    help="Path to cookies JSON file for authenticated scraping.",
 )
 @click.pass_context
 def scrape_full(ctx, **kwargs):
@@ -139,6 +171,24 @@ def scrape_full(ctx, **kwargs):
             try:
                 # Start Playwright
                 await scraper.start_playwright(headless=not kwargs.get("headless", False))
+                
+                # Load cookies if provided
+                cookies_path = kwargs.get("cookies")
+                if cookies_path and os.path.exists(cookies_path):
+                    cookies = load_cookies_from_file(cookies_path)
+                    if cookies:
+                        page = scraper.playwright_manager.page
+                        # Add cookies to the browser context
+                        try:
+                            await page.context.add_cookies(cookies)
+                            logger.info(f"Added {len(cookies)} cookies to browser context")
+                        except Exception as e:
+                            logger.warning(f"Could not add cookies: {e}")
+                        
+                        # Visit OddsPortal to activate cookies
+                        logger.info("Activating cookies by visiting OddsPortal...")
+                        await page.goto(ODDSPORTAL_BASE_URL, timeout=30000)
+                        await page.wait_for_timeout(2000)
                 
                 # Create extractor
                 extractor = FullOddsExtractor(scraper)
