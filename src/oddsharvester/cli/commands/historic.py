@@ -80,7 +80,14 @@ def historic(ctx, **kwargs):
             )
         )
 
-        if scraped_data and scraped_data.success:
+        # Determine if scraping was successful (has data OR legitimately found 0 matches)
+        # Note: scraped_data.success = [] (empty list) is falsy, but 0 matches is valid data
+        # Only treat as failure if scraped_data itself is None (scrape crashed)
+        scrape_success = scraped_data is not None
+        has_matches = scraped_data.success if scrape_success else False
+
+        if scrape_success:
+            # Always save results (even if 0 matches) so orchestrator can skip retry
             if not (checkpoint_enabled and file_path):
                 store_data(
                     storage_type=storage.value if storage else "local",
@@ -88,12 +95,20 @@ def historic(ctx, **kwargs):
                     storage_format=storage_format.value if storage_format else "json",
                     file_path=file_path,
                 )
-            click.echo(
-                f"Successfully scraped {scraped_data.stats.successful} matches "
-                f"({scraped_data.stats.failed} failed, {scraped_data.stats.success_rate:.1f}% success rate)."
-            )
-            if scraped_data.failed:
-                click.echo(f"Failed URLs: {[f.url for f in scraped_data.failed]}", err=True)
+            match_count = scraped_data.stats.successful if scraped_data.stats else 0
+            if has_matches:
+                click.echo(
+                    f"Successfully scraped {match_count} matches "
+                    f"({scraped_data.stats.failed} failed, {scraped_data.stats.success_rate:.1f}% success rate)."
+                )
+                if scraped_data.failed:
+                    click.echo(f"Failed URLs: {[f.url for f in scraped_data.failed]}", err=True)
+            else:
+                click.echo(
+                    f"No matches found (page loaded successfully, OddsPortal has no data for this league/season). "
+                    f"({scraped_data.stats.failed} failed, {scraped_data.stats.success_rate:.1f}% success rate)."
+                )
+                # Exit 0: this is valid empty data, not an error
         else:
             logger.error("Scraper did not return valid data.")
             sys.exit(1)
