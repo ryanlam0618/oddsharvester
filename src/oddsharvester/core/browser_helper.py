@@ -44,6 +44,24 @@ class BrowserHelper:
         self.logger = logging.getLogger(self.__class__.__name__)
 
     # =============================================================================
+    # HUMAN SIMULATION (synced from SofaScore backfill)
+    # =============================================================================
+
+    async def humanize_page(self, page: Page) -> None:
+        """Simulate human mouse movement and scrolling to avoid bot detection."""
+        try:
+            import random as _rnd
+            await page.mouse.move(
+                _rnd.randint(140, 640), _rnd.randint(110, 420),
+                steps=_rnd.randint(8, 18)
+            )
+            await page.wait_for_timeout(int(_rnd.uniform(200, 600)))
+            await page.mouse.wheel(0, _rnd.randint(180, 520))
+            await page.wait_for_timeout(int(_rnd.uniform(400, 1000)))
+        except Exception:
+            return
+
+    # =============================================================================
     # COOKIE BANNER MANAGEMENT
     # =============================================================================
 

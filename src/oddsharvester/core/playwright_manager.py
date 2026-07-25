@@ -6,6 +6,18 @@ from playwright.async_api import async_playwright, Page, Route
 from oddsharvester.utils.constants import PLAYWRIGHT_BROWSER_ARGS, PLAYWRIGHT_BROWSER_ARGS_DOCKER
 from oddsharvester.utils.utils import is_running_in_docker
 
+# Third-party domains to block (synced from SofaScore backfill)
+BLOCKED_THIRD_PARTY_DOMAINS = (
+    "smartadserver.com",
+    "googleadservices.com",
+    "googlesyndication.com",
+    "doubleclick.net",
+    "googletagmanager.com",
+    "google-analytics.com",
+)
+
+BLOCKED_RESOURCE_TYPES = {"image", "stylesheet", "font", "media"}
+
 # Comprehensive anti-detection script to hide automation signatures
 STEALTH_SCRIPT = """
 (function() {
@@ -146,11 +158,28 @@ STEALTH_SCRIPT = """
 })();
 """
 
-# Default user agents that look like real browsers
+# Default user agents that look like real browsers (synced from SofaScore backfill)
 DEFAULT_USER_AGENTS = [
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+    # Chrome on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    # Chrome on macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    # Chrome on Linux
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+    # Firefox on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:126.0) Gecko/20100101 Firefox/126.0",
+    # Firefox on Linux
+    "Mozilla/5.0 (X11; Linux x86_64; rv:125.0) Gecko/20100101 Firefox/125.0",
+    # Safari on macOS
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+    # Chrome on Mobile (Android)
+    "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36",
+    # Safari on iOS
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
+    # Edge on Windows
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36 Edg/124.0.0.0",
 ]
 
 
@@ -215,11 +244,12 @@ class PlaywrightManager:
             raise
 
     async def _block_one_trust_scripts(self, page: Page) -> None:
-        """Block OneTrust scripts to prevent bot detection.
+        """Block OneTrust scripts and third-party resources to prevent bot detection.
         
         OneTrust has sophisticated bot detection that our stealth script can't fully bypass.
-        This method blocks OneTrust scripts from loading, preventing bot detection from running.
-        Uses a catch-all handler to intercept all requests and abort those to OneTrust domains.
+        This method blocks OneTrust scripts from loading, preventing bot detection from running,
+        AND blocks third-party ad/tracking domains + unneeded resource types (synced from SofaScore).
+        Uses a catch-all handler to intercept all requests and abort those to blocked domains.
         """
         one_trust_domains = [
             "onetrust",
@@ -230,7 +260,7 @@ class PlaywrightManager:
         ]
         
         async def handle_route(route: Route) -> None:
-            """Abort requests to OneTrust and related domains."""
+            """Abort requests to OneTrust, ad/tracking domains, and unneeded resource types."""
             url = route.request.url
             url_lower = url.lower()
             
@@ -240,6 +270,19 @@ class PlaywrightManager:
                     await route.abort()
                     return
             
+            # Block third-party ad/tracking domains (synced from SofaScore)
+            from urllib.parse import urlparse
+            host = (urlparse(url).hostname or "").lower()
+            for domain in BLOCKED_THIRD_PARTY_DOMAINS:
+                if host == domain or host.endswith(f".{domain}"):
+                    await route.abort()
+                    return
+            
+            # Block unneeded resource types to save bandwidth (synced from SofaScore)
+            if route.request.resource_type in BLOCKED_RESOURCE_TYPES:
+                await route.abort()
+                return
+            
             # Allow all other requests
             await route.continue_()
         
@@ -247,11 +290,25 @@ class PlaywrightManager:
             # Use catch-all pattern to intercept ALL requests
             await page.route("**/*", handle_route)
         except Exception as e:
-            self.logger.debug(f"Failed to block OneTrust scripts: {e}")
+            self.logger.debug(f"Failed to block scripts: {e}")
 
     async def block_one_trust_for_page(self, page: Page) -> None:
-        """Block OneTrust scripts for a specific page (call before navigation)."""
+        """Block OneTrust scripts and third-party resources for a specific page (call before navigation)."""
         await self._block_one_trust_scripts(page)
+
+    async def humanize_page(self, page: Page) -> None:
+        """Simulate human mouse movement and scrolling (synced from SofaScore backfill)."""
+        try:
+            import random as _rnd
+            await page.mouse.move(
+                _rnd.randint(140, 640), _rnd.randint(110, 420),
+                steps=_rnd.randint(8, 18)
+            )
+            await page.wait_for_timeout(int(_rnd.uniform(200, 600)))
+            await page.mouse.wheel(0, _rnd.randint(180, 520))
+            await page.wait_for_timeout(int(_rnd.uniform(400, 1000)))
+        except Exception:
+            return
 
     async def cleanup(self):
         """Properly closes Playwright instances."""

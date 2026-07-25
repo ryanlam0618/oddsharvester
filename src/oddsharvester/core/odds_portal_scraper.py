@@ -353,6 +353,8 @@ class OddsPortalScraper(BaseScraper):
         await self.set_odds_format(page=page)
         await self.browser_helper.dismiss_cookie_banner(page=page)
         await self.browser_helper.dismiss_overlays(page=page)
+        # Simulate human behavior after page preparation (synced from SofaScore)
+        await self.browser_helper.humanize_page(page=page)
 
     async def _get_pagination_info(self, page: Page, max_pages: int | None) -> list[int]:
         """

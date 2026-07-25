@@ -463,6 +463,10 @@ class BaseScraper:
         """
         self.logger.info(f"Starting to scrape odds for {len(match_links)} match links...")
 
+        # Shuffle match links to avoid sequential access patterns (synced from SofaScore)
+        from oddsharvester.utils.rate_limiter import shuffle_targets
+        match_links = shuffle_targets(match_links, conservatively=True)
+
         result = ScrapeResult(stats=ScrapeStats(total_urls=len(match_links)))
         semaphore = asyncio.Semaphore(concurrent_scraping_task)
 

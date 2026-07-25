@@ -33,8 +33,9 @@ dependencies = [
     "boto3>=1.42.21",
     "click>=8.1.0",
     "lxml>=6.0.2",
+    "mysql-connector-python>=9.7.0",
     "playwright>=1.57.0",
-    "pytz>=2025.2"
+    "pytz>=2025.2",
 ]
 
 [project.optional-dependencies]
