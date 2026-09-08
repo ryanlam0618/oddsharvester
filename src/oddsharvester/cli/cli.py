@@ -5,7 +5,7 @@ import logging
 import click
 
 from oddsharvester import __version__
-from oddsharvester.cli.commands import historic, upcoming, scrape_full
+from oddsharvester.cli.commands import community, historic, live, scrape_full, upcoming
 from oddsharvester.utils.setup_logging import setup_logger
 
 
@@ -27,6 +27,8 @@ def cli(ctx, verbose, quiet):
         oddsharvester historic -s football -l england-premier-league --season 2024-2025 -m 1x2
 
         oddsharvester scrape-full -s football -l england-premier-league --season 2020-2021
+
+        oddsharvester community -s football -o top_predictions.json
     """
     # Configure logging based on verbosity
     if quiet:
@@ -48,6 +50,8 @@ def cli(ctx, verbose, quiet):
 cli.add_command(upcoming)
 cli.add_command(historic)
 cli.add_command(scrape_full)
+cli.add_command(community)
+cli.add_command(live)
 
 
 def main():

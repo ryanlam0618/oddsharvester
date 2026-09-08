@@ -50,6 +50,7 @@ def _next_saturday(today: date) -> date:
 
 
 @pytest.mark.integration
+@pytest.mark.live_only
 class TestUpcomingLeagueDateFilter:
     """End-to-end tests for combining --league and --date on scrape-upcoming."""
 

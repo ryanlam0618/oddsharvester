@@ -1,0 +1,1631 @@
+# OddsPortal Scraping Gotchas
+
+Reusable patterns extracted from past bugs. Read this **before** working on
+anything that touches DOM parsing, league configuration, CLI options, or
+Playwright config — these traps are not deducible from the code alone because
+they describe *OddsPortal server behaviour*, not our code.
+
+Each gotcha is structured as: **the trap → the detection signal → the fix
+pattern → references**.
+
+The gotchas are grouped by theme:
+
+- **§1–§3** — OddsPortal serves untrustworthy data (correctness, completeness, format).
+- **§4** — OddsPortal renames things over time (league slugs).
+- **§5** — Our own code architecture (where logic belongs).
+- **§6** — Operational: anti-bot detection symptoms.
+- **§7** — Regional mirror domains and the `--base-url` option.
+- **§8** — Volleyball O/U and AH each split into a Sets axis and a Points axis.
+- **§19** — The 2026-08 frontend redesign (data-testid DOM, H2H links, hash-driven views).
+
+---
+
+## §1 — SSR ships stale or phantom data that contradicts the requested URL
+
+> **2026-08 redesign note (§19):** the SSR no longer renders any match content
+> and `react-event-header` is gone, so the case-a/case-b discrimination and the
+> `eventData.id` resync below are historical. The lesson that survives: SSR
+> payloads (now the JSON-LD) still describe the *next upcoming* matchup, never
+> trust them for the fragment match.
+
+**Severity:** High — has produced silent data corruption three times under
+three different shapes.
+
+OddsPortal's server-rendered HTML cannot be trusted as a source of truth for
+the match the URL is requesting. The page is built around a React SPA that
+mutates the visible content client-side based on URL fragments or AJAX calls,
+and the SSR payload is whatever was convenient for the server (the latest
+match, a phantom hidden duplicate, etc.).
+
+### Three observed shapes
+
+| Shape | Where | Symptom | Fix commit |
+|---|---|---|---|
+| **a.** Embedded `react-event-header` JSON returns the most-recent matchup, not the requested historic match | `<div id="react-event-header" data='…'>` on H2H detail pages | All fields (teams, date, scores) belong to a different match | `cef2bf3` — DOM-first extraction with per-field JSON fallback |
+| **b.** DOM **and** JSON both wrong because the SSR for `/sport/h2h/home/away/#fragment` renders the *upcoming* matchup, the SPA hasn't swapped yet | H2H pages where teams play each other repeatedly (MLB, NBA, ATP) | `match_date` is in the future on a historic scrape | Issue #60 — force `hashchange` via `page.evaluate`, wait for `eventData.id === fragment` |
+| **c.** League listings include duplicate "phantom" event rows hidden in CSS, whose href points to a corrupted slug that 301-redirects to an unrelated match | `<tr style="left:-9999px">` (also `display:none`, `visibility:hidden`, `top:-9999px`) on `/results/` listings | Random unrelated matches scraped from a league listing | `f7c6ee4` — `_is_offscreen_row` helper, skip before processing |
+
+**Case b fails intermittently, and that is not a structure change.** The SPA
+swap is a client-side render race: on a full Turkish Süper Lig season (issue
+#83, 306 matches) 262 URLs tripped the fragment mismatch, 239 recovered via the
+case-a DOM path and 23 timed out in the resync. Re-running the same URLs
+succeeds. On that log the resync itself succeeded 0 times out of 23 attempts;
+the other 239 mismatches recovered through the case-a DOM path without ever
+entering the resync, so recovery on retry comes from landing on the case-a
+path on a later page load, not from the resync eventually working. So a
+resync timeout must be raised as a **retryable** error
+(`H2HFragmentResolutionError`), never returned as `None` and never typed
+`NAVIGATION`; instead it is typed `HEADER_NOT_FOUND`, since that type is
+absent from `PROXY_ATTRIBUTABLE_ERROR_TYPES` in `core/retry.py`, so the
+failure never counts against the proxy that served a perfectly good page.
+Leagues where every team pair has one alphabetically normalized H2H URL, with
+`#fragment` as the only discriminator between the two legs, hit this on
+nearly every match.
+
+### Detection signal (general rule)
+
+**Never trust the first thing you parse.** Cross-reference with at least one
+independent signal:
+
+- **URL fragment vs `eventData.id`** — if both exist and differ, the embedded
+  JSON is *not* the requested match. But this signal alone is **necessary, not
+  sufficient**: cases **a** and **b** both trip it yet need opposite handling.
+  In case **a** (PR #54: stale *recent* match) the SPA *has* hydrated the DOM to
+  the correct fragment match and `eventData.id` **never** updates — resyncing is
+  impossible and dropping regresses PR #54. In case **b** (issue #60: *upcoming*
+  match) the DOM is still the wrong match too. **Discriminate by DOM-vs-JSON
+  date**, not by `eventData.id` alone: if the DOM date differs from the JSON
+  date, the DOM resolved independently → trust DOM (case a); if DOM date equals
+  the stale JSON date or is absent → SPA not reconciled → resync or drop
+  (case b). Gating purely on `fragment != eventData.id` shipped a regression
+  that dropped every PR #54-class historic H2H match (see issue #60 follow-up).
+- **CSS visibility** — for any row/element you iterate over on a listing page,
+  check `style` for `left:-9999px`, `top:-9999px`, `display:none`,
+  `visibility:hidden` (markers live in `_OFFSCREEN_STYLE_MARKERS` in
+  `base_scraper.py`). These are not user-visible and should be skipped.
+- **DOM vs JSON** — when both exist for the same field (team names, date,
+  scores), prefer the DOM (`data-testid` attributes) and use JSON only as
+  fallback. The DOM is what the user sees; the embedded JSON may be stale.
+
+### Fix pattern
+
+1. Add a detection step that produces a boolean "trust signal".
+2. If untrustworthy, either:
+   - Skip the row (when there's nothing to recover — case c).
+   - Force a reconciliation step (case b: drive the SPA via `page.evaluate`
+     and `page.wait_for_function`, then re-parse).
+   - Drop the match with an ERROR log (better than emitting wrong data).
+3. Add a HAR replay test that captures the *wrong* SSR payload so the
+   regression is locked down without needing the live site.
+
+### Before adding new extraction code
+
+Ask: "what would I see if OddsPortal sent me a different match's data here?"
+If the answer is "nothing — I'd just emit wrong data silently", you need a
+trust signal. The cost of an extra DOM check is far lower than the cost of a
+silent data-quality bug that ships for weeks.
+
+---
+
+## §2 — Client-side rendering silently truncates listings and URLs
+
+**Severity:** High — caused EPL season scrapes to return ~60 matches instead
+of ~380 (≈84% data loss) without any error.
+
+OddsPortal optimizes initial page weight by relying on the client (browser
+behaviour, ellipsis-style pagination widgets, URL conventions) to fill in
+information that isn't present in the SSR HTML. Naively reading the rendered
+DOM gives you an incomplete view — and there are no errors raised, just
+fewer results than expected.
+
+### Three observed shapes
+
+| Shape | Where | Symptom | Fix commit |
+|---|---|---|---|
+| **a.** Pagination widget collapses long ranges with an ellipsis (e.g. `[1, 2, 3, …, 28]`); only the visible page numbers exist in the HTML | League `/results/` listings beyond ~5 pages | Scraper visits 3–5 pages instead of 28; ≈85% of season missing | PR #50 — `_fill_pagination_gaps` generates the full `1..max_page` range |
+| **b.** `window.scrollTo(0, document.body.scrollHeight)` jumps past lazy-loader trigger points without firing the IntersectionObserver | League listings, market dropdowns | ~5 event rows loaded instead of ~50 per page | PR #50 — `scroll_until_loaded` now steps incrementally (500px) |
+| **c.** The current season URL has **no year suffix** (`/football/england/premier-league/results/`) while historic seasons do (`/premier-league-2024-2025/results/`) | URL builder for `--season current` (or implicit current season) | Builder appends a `-YYYY-YYYY` suffix → 404 / empty page | PR #50 first dropped the suffix when `end_year == current calendar year`; that heuristic silently sent a *finished* season to the base URL once OddsPortal rolled it over to the next season (issue #71). **Corrected:** the no-suffix URL is reserved for `current`/None; every explicit `YYYY`/`YYYY-YYYY` always carries the suffix |
+
+### Detection signal (general rule)
+
+**Compare what you got against what you expected.** Most of these bugs slip
+through because the scraper "succeeded": no error raised, just less data.
+Build sanity checks:
+
+- **Counts** — if the page advertises N pages, the scraper must visit N
+  pages. If a page lists "showing 1–50 of 142", we must end up with ~50
+  rows per page. Log discrepancies as WARNING.
+- **URL convention** — when generating URLs from templates, verify the
+  produced URL exists in a browser before shipping the change. OddsPortal
+  has at least three URL conventions (`/results/`, `-YYYY/results/`,
+  `-YYYY-YYYY/results/`). The no-suffix form serves *whatever season is
+  currently live* and rolls over without notice, so it is reserved for an
+  explicit `current`/None request; a named season (`YYYY` or `YYYY-YYYY`)
+  must always use its suffixed form. Do **not** re-derive the choice from the
+  calendar year — that is exactly what sent finished-season scrapes to the
+  rolled-over season (issue #71).
+
+### Fix pattern
+
+1. Identify the "happy default" the rendered DOM gives you, and challenge it.
+   - Pagination → don't trust the rendered list; compute the range.
+   - Scroll → don't trust `scrollHeight`; iterate.
+   - URL builder → reserve the no-suffix base URL for `current`/None; a named
+     `YYYY`/`YYYY-YYYY` season always keeps its suffix. Don't re-derive the
+     choice from the calendar year (that reinstates the issue #71 rollover bug).
+2. When you fix a "silent truncation" bug, add a regression test asserting
+   the **count**, not just the structure. A test that asserts "we got at
+   least one row" is what allowed the bug to ship in the first place.
+
+### Heuristic for spotting future variants
+
+Any place where we use a DOM measurement (`length`, `scrollHeight`, last
+visible element) as a stopping condition is a candidate. OddsPortal's React
+app is built to defer work; assume any "edge of the rendered tree" is a lie.
+
+---
+
+## §3 — Per-bookmaker / per-geography data formats require fallback chains
+
+**Severity:** Medium — silently discarded ~19K odds history records per EPL
+season scrape from UK IPs.
+
+OddsPortal's data shape varies depending on the bookmaker and the user's
+geographic context. A field that is a string for one bookmaker may be missing
+entirely for another, or in a completely different format. Single-selector
+extraction or naive type conversion drops data with no error.
+
+### Two observed shapes
+
+| Shape | Where | Symptom | Fix commit |
+|---|---|---|---|
+| **a.** Some UK bookmakers (Betfred, BetVictor, bwin) return fractional odds (`4/5`) even when `--odds-format "Decimal Odds"` is requested | Odds history rows on detail pages | `ValueError` from `float("4/5")` → all odds history for that bookmaker silently discarded; ≈19K errors per EPL season | PR #49 — `parse_odds_value()` detects `N/M`, returns `N/M + 1`; fallback `float()` |
+| **b.** Bookmaker name resolution depended only on `<img class="bookmaker-logo" title="…">`, which is absent for some bookmakers; CTA-style `<a title>` ("Go to Betfair Exchange website!") leaked through as the name | Bookmaker columns in odds tables | Rows labelled "Unknown" or dropped entirely | PR #49 — 3-step fallback chain: `img[title]` → `a[title]` → `img[alt]`, with CTA-text normalisation |
+
+### Detection signal
+
+When you write code that reads a single attribute or applies a single type
+conversion to OddsPortal-sourced data, ask:
+
+1. Is this format identical for **every bookmaker** (UK, Asian, US, exchange)?
+2. Is this attribute present for **every row**?
+3. Does the parser have a sensible default when the value is missing or in
+   an unexpected format?
+
+If any answer is "no" or "I don't know", you need a fallback chain.
+
+### Fix pattern
+
+1. Define an ordered list of selectors / parsers, most preferred first.
+2. Walk the list, return on first success.
+3. Return `None` when nothing resolves, and let the caller decide whether to
+   skip the row, log a WARNING, or substitute a default.
+4. **Skip silently → log loudly**: `WARNING` for fallback usage (so we
+   notice when "fallback" becomes "primary"); `DEBUG` for per-row noise.
+5. Add a regression test for the unusual case — without it, the fallback
+   will rot.
+
+### Anti-pattern: catching `ValueError` and pretending the row didn't exist
+
+The original fractional-odds bug existed for months because the
+`float()` exception was caught and logged at DEBUG with no aggregation. Per-row
+DEBUG noise hides systemic failures. Aggregate counts at INFO ("dropped 19,332
+rows due to parse errors") so the next contributor sees the problem.
+
+---
+
+## §4 — League slugs change when sponsorship deals change
+
+**Severity:** Medium — recurs every time a league signs a new title sponsor.
+
+OddsPortal renames league URL slugs to reflect title sponsors:
+`brazil/serie-a` became `brazil/serie-a-betano` in 2024; Czech `fortuna-liga`
+became `chance-liga` in 2024–2025; Serbia `super-liga` became
+`mozzart-bet-super-liga`. Historic seasons keep the **old** URL; only the
+current season uses the new slug. Naively patching the slug in
+`SPORTS_LEAGUES_URLS_MAPPING` breaks every historic scrape for older seasons.
+
+### Detection signal
+
+A `validate_league.py` run returns 404 for a league that previously worked, or
+the URL on oddsportal.com no longer matches the entry in
+`sport_league_constants.py`. Also worth watching: sports business news
+(title-sponsor announcements for major leagues).
+
+### Fix pattern
+
+1. Update `SPORTS_LEAGUES_URLS_MAPPING` to the **new** (current) slug.
+2. Add an entry to `LEAGUE_SEASON_ALIASES` in
+   `src/oddsharvester/utils/league_aliases.py` mapping the season *cutoff
+   year* to the **old** slug:
+   ```python
+   "brazil-serie-a": {
+       2023: "serie-a",   # seasons ≤ 2023 use this slug
+   },
+   ```
+3. Add a `URLBuilder` test that verifies both old and new seasons resolve to
+   the right URL.
+4. Add a `LEAGUE_SEASON_ALIASES` unit test asserting the mapping.
+
+### When adding a brand-new league
+
+Before adding the entry, manually visit a historic season page on
+oddsportal.com (e.g., `…/serie-a-2021-2022/results/`). If the slug differs
+from the current season, set up the alias *immediately* — don't wait for the
+first user to file an issue.
+
+### The season selector is the authoritative slug map (Sept 2026)
+
+Don't guess season slugs one URL at a time. The season dropdown on
+`<league>/results/` links every season the site has, each href carrying the
+slug that season actually lives under. One page load per league gives the
+whole history, renames included:
+
+```bash
+uv run python scripts/validate_league.py -s football -l spain-laliga --dump-seasons
+```
+
+Sweeping the 95 configured football leagues that way (issue #78) found **44
+with an unrecorded rename**, and two `LEAGUE_SEASON_ALIASES` entries that were
+off by one season (`hungary-nb-i`, `slovakia-nike-liga`) because they had been
+written from a guess rather than from the selector. The whole table was
+rebuilt from that sweep. Four leagues also had a stale *base* URL
+(`brazil-serie-b`, `world-cup`, `argentina-liga-profesional`,
+`chile-primera-division`): their old slug still renders as a landing page, so
+nothing looked broken, while every per-season URL under it was wrong.
+
+Two details when reading the dump: filter the hrefs to the league's own
+country segment (the page also links to unrelated competitions), and expect
+the ranges to be contiguous, one slug per era.
+
+### A dead season URL can redirect to the current fixtures (Sept 2026)
+
+Worse than a not-found page, and the reason the guard in `scrape_historic`
+exists. `mexico/liga-mx-2012-2013/results/` (right league, season that lives
+under the old `primera-division` slug) **redirects to
+`mexico/liga-mx/`**, the current fixtures listing. Before the guard, that run
+collected 9 upcoming 2026 matches, stamped them `season: 2012-2013`, reported
+`0 listing pages failed` and exited 0. Silent wrong data, not an empty result.
+
+Spain answers the same class of URL with an `Offside — page not found` body
+and 0 links, so the behaviour is per league and cannot be assumed either way.
+`OddsPortalScraper._assert_season_page_reached` compares the landed
+`page.url` path against the requested one after the first `goto` and raises
+`PageNotFoundError` when they differ, which surfaces the combo as `error` in
+the end-of-run summary. Keep that check ahead of any listing walk: it costs no
+request, and §15's "wrong pairs come back empty" is only true once it runs.
+
+### Renames are not always sponsor-driven (handball, May 2026)
+
+Slug drift also happens without a title sponsor, and the OddsPortal
+**localized results listing lies about the real slug**. While validating the
+7 configured handball leagues against `https://www.oddsportal.com/results/#handball`:
+
+| Configured slug (key kept) | Old/dead URL | Correct canonical URL |
+|---|---|---|
+| `ehf-champions-league` | `…/handball/europe/ehf-champions-league/` | `…/handball/europe/champions-league/` |
+| `ehf-european-league` | `…/handball/europe/ehf-european-league/` | `…/handball/europe/european-league/` |
+| `france-lnh` | `…/handball/france/lnh/` | `…/handball/france/starligue/` |
+| `denmark-handboldligaen` | `…/handball/denmark/handboldligaen/` | `…/handball/denmark/herre-handbold-ligaen/` |
+
+Two non-obvious traps here:
+
+1. **Localized listing alias ≠ real slug.** The `/results/#handball` page is
+   served Italian-localized; its href for the men's EHF Champions League was
+   `…/europe/champions-league-uomini/…`, but that slug renders **0 match
+   links**. The actual working slug is the un-suffixed `champions-league`.
+   Always confirm a slug harvested from the listing by loading
+   `<url>results/` and checking for match links — never trust the listing
+   href alone.
+2. **HTTP 200 is not validation.** Every dead URL above still returned 200
+   with a valid-looking `<title>`; only the absence of `eventRow` match
+   links revealed they were dead. Off-season leagues legitimately have no
+   *upcoming* fixtures, so the canonical validation target is the
+   `<league>/results/` sub-page (past matches), exactly what
+   `validate_league.py` checks.
+
+Dictionary **keys were intentionally left unchanged** (`france-lnh`,
+`denmark-handboldligaen`, `ehf-champions-league`) to preserve backward-compatible
+CLI slugs and existing tests — only the URL *values* were corrected. No
+`LEAGUE_SEASON_ALIASES` entries were added because handball historic seasons
+were not in scope; if a user reports historic-season breakage, add aliases
+per the fix pattern above.
+
+Validate handball slugs with `uv run python scripts/validate_league.py -s
+handball --all` (the project's hardened `PlaywrightManager` gets past the
+anti-bot layer that blocks a vanilla browser).
+
+**Reference commits/PRs:** `708a8cf` (Brazil Serie A → Betano), PR #43
+(Czech / Mexico / Serbia aliases). Handball URL audit: May 2026. Season
+selector sweep, the 44 missing aliases and the redirect guard: issue #78.
+
+---
+
+## §5 — CLI options need normalization at the lowest layer, never in the CLI
+
+**Severity:** Medium — causes inconsistent behaviour across sports / commands.
+
+`--season current` was initially normalized in the CLI command
+(`historic.py`) using a hardcoded whitelist of "sports that support
+'current'": `{"tennis", "football", "baseball", "ice-hockey", "rugby-league",
+"rugby-union"}`. Sports outside the whitelist hit `URLBuilder` which raised
+`ValueError` for `"current"`. Result: `--season current` worked for some
+sports and crashed for others.
+
+### Detection signal
+
+Any time you see a hardcoded list of "sports/markets/leagues that support
+feature X" *inside the CLI layer*, that's the smell. The CLI should be a
+thin pass-through; behaviour-defining logic belongs in the layer that knows
+the domain.
+
+### Fix pattern
+
+1. Move the normalization to the lowest layer that owns the domain knowledge.
+   For URL-shape decisions, that's `URLBuilder`. For market resolution,
+   that's `SportMarketRegistry`. Etc.
+2. Delete the CLI-side whitelist.
+3. Make the lower-layer behaviour explicit in the docstring (e.g., "Accepts
+   `'current'` (case-insensitive), `None`, or empty string for the current
+   season").
+4. Add tests at the lower layer covering all sports — not just the ones the
+   CLI used to whitelist.
+
+### Rule of thumb
+
+The CLI parses arguments and dispatches. It should not encode business rules
+about which combinations are valid for which sport. If you find yourself
+writing `if sport in {...}` inside a CLI handler, stop and push the logic
+down.
+
+**Reference commit:** `915df2f` (`current` season normalization centralized
+in `URLBuilder`).
+
+---
+
+## §6 — Anti-bot detection: distinguish symptom from cause
+
+**Severity:** Operational — burns hours debugging the wrong layer.
+
+OddsPortal periodically tightens its anti-bot detection. When triggered, the
+visible symptom is *almost always* the same: pages load but contain **0
+event rows**, sometimes with a cookie banner timeout. The scraper completes
+"successfully" with no parsing error.
+
+Common triggers observed:
+
+- **Headless mode in Docker/server environments without anti-detection flags**
+  — `--disable-blink-features=AutomationControlled` is critical; Docker
+  defaults to a narrower flag set than local (`7e199bd`).
+- **VPN endpoints flagged after a few minutes** — same IP works initially,
+  then gets challenged (issue #45).
+- **OddsPortal rolling out a new anti-bot script** — symptom is sudden
+  across-the-board failure with no code change (issue #29).
+
+### Detection signal
+
+The triage rule before touching parsing code:
+
+```
+0 event rows + 0 parse errors → suspect anti-bot, NOT parsing
+```
+
+Quick checks (in order):
+
+1. Run the same command with `--headless=false`. If you see a Cloudflare
+   challenge or a blank page, it's anti-bot.
+2. Manually load the same URL in a normal browser from the same IP. If it
+   works there but not from the scraper, it's anti-bot or stealth-script
+   regression.
+3. Check the `STEALTH_SCRIPT` and `PLAYWRIGHT_BROWSER_ARGS_DOCKER` /
+   `PLAYWRIGHT_BROWSER_ARGS` constants in `playwright_manager.py` for
+   divergence between local and Docker.
+
+### Fix pattern
+
+- For new Playwright/browser flags, add them to **both** local and Docker
+  arg lists. The Docker list has been the source of multiple regressions
+  because it lags behind local.
+- When a user reports "scraping returns 0 results", request the output of
+  `--headless=false` before assuming a parsing bug.
+- Treat anti-bot fixes as urgent: a silent 0-results scrape that succeeds
+  is worse than one that errors out, because users don't notice for days.
+
+**Reference:** `7e199bd` (PR #38 — Docker anti-detection args), issues #29,
+#45.
+
+---
+
+## §7 — Regional OddsPortal mirrors: domain swap, not a different site
+
+**Severity:** Low (informational) — relevant when extending `--base-url` support
+or debugging region-specific bookmaker availability.
+
+OddsPortal serves region-specific mirror domains (e.g. `centroquote.it` for
+Italy, `cuotasahora.com` for LATAM/Spanish, `oddsagora.com.br` for Brazil) whose
+DOM **structure** (selectors, JSON shapes, `data-testid`s) is identical to
+`www.oddsportal.com`; only the scheme + host differ. The motivation is that the
+bookmaker set exposed per region varies — users previously worked around this
+with a VPN (issue #45).
+
+### …but the structure is identical, the *labels* are not (issue #70)
+
+The page structure matches, but all **user-visible text is localized** per
+domain — and the language is **server-bound to the domain**, not switchable via
+`Accept-Language`, the Playwright context `locale`, or a `lang` cookie/localStorage
+(all verified ineffective on `cuotasahora.com`; `html lang="es"` is forced). The
+English-only mirror *is* `www.oddsportal.com`, which is exactly the domain a LATAM
+user gets geo-redirected away from.
+
+This breaks any code that matches DOM elements by their **visible text**. The
+market-tab navigator (`MarketTabNavigator`) matched tab labels against English
+strings (`"Over/Under"`), so on the Spanish mirror the `Más/Menos de` /
+`Hándicap asiático` / `Ambos equipos marcan` tabs were never found → the market
+silently returned `[]`.
+
+**The fix — match the language-independent market code, not the label.** When a
+market tab is clicked, OddsPortal writes a stable, language-independent code into
+the URL fragment: `#<match_id>:<code>;<scope>` (e.g. `#4pPp9nn3:over-under;2`).
+These codes are identical across every mirror **and** across sports. Verified
+live: `1X2`, `home-away`, `over-under`, `ah`, `eh`, `bts`, `cs`, `double`, `dnb`
+(plus out-of-scope `ht-ft`, `odd-even`). The map lives in
+`OddsPortalSelectors.MARKET_TAB_CODES`, keyed by the English `main_market` label.
+
+`MarketTabNavigator.navigate_to_tab` keeps label matching as the fast path
+(unchanged on `.com`) and, only when it fails, falls back to `_navigate_by_code`:
+click each tab, read `location.hash`, match the code. The `More` overflow button
+is opened via `data-testid="more-button"` (its text is localized too: `Más`),
+and its expanded state is detected via the `.drop-arrow-hide` arrow element, not
+text. `NavigationManager.wait_for_market_switch` likewise confirms the active
+market via the URL code first, falling back to label text.
+
+Two non-obvious traps for the next contributor:
+
+1. **You cannot navigate markets by setting `location.hash` directly.** The SPA's
+   market router ignores a synthetic `hashchange` for market switching (unlike the
+   match-id resync trick in §1 / issue #60). Only a real tab **click** drives it —
+   which is why the fallback clicks tabs and *reads* the resulting code rather than
+   writing it.
+2. **`main_market="Handicap"` (rugby) has no matching tab.** OddsPortal only has
+   `Asian Handicap`/`European Handicap`. The old substring match resolved
+   `"Handicap"` to the first tab containing it (`Asian Handicap`); the code map
+   pins `"Handicap" → "ah"` to preserve that exact behaviour. Revisit if rugby
+   handicap is ever meant to be European (`eh`).
+
+### The label trap recurs below the tab — submarket lines (issue #70 follow-up)
+
+Fixing the **tab** is not enough: the same localization breaks the **submarket
+line** selection one layer down, and the URL-code trick does *not* apply there
+(submarket lines carry no per-line code in the fragment). After #70 the tab
+resolved correctly but `over_under` markets still returned `[]` on
+`cuotasahora.com`, because `NavigationManager.select_specific_market` matched the
+full English label `"Over/Under +20.5 Games"` and the row reads
+`"Más/Menos de +20.5 Games"`.
+
+**The fix — match the untranslated tail, not the full label.** Only the
+main-market *prefix* is translated (`Over/Under` → `Más/Menos de`); the numeric
+line and axis word (`+20.5 Games`, `-2.5 Sets`) are byte-identical across mirrors
+(verified: the `Games`/`Sets` suffix stays English on the Spanish mirror).
+`OddsPortalSelectors.submarket_match_text(specific_market, main_market)` strips
+the English `main_market` prefix and the substring matcher in
+`PageScroller.scroll_until_visible_and_click_parent` finds the row on every
+mirror. The retained leading `+`/`-`/`:` is load-bearing: it stops `+2.5` from
+matching `+20.5`. The submarket option box also carries a language-independent
+`data-testid="<code>-collapsed-option-box"` (e.g. `over-under-collapsed-option-box`)
+if a future change needs to scope by market rather than by label tail.
+
+### The period selector has the same trap — fixed via the fragment scope code
+
+The `kickoff-events-nav` tabs (`Full Time` → `Final del partido`, `1st Set` →
+`1er set`) expose only `data-testid="sub-nav-active-tab"`/`sub-nav-inactive-tab`
+— **no per-period code on the tab itself** — so the old label-based
+`SelectionManager`/`PERIOD_STRATEGY` logged `period target element not found for:
+Full Time` on every mirror. Non-fatal for the default period (Full Time is the
+active tab and the extractor ignores the return), but a **non-default** period
+(e.g. tennis `1st Set`) silently fell back to Full Time data — a §1-class
+silent-wrong-data risk.
+
+**The fix — select by the fragment scope, like the market tab.** The active
+period is the `;<scope>` segment of the fragment (`…:over-under;2`). Scope ids
+are **global OddsPortal period ids, identical across mirrors and across sports**
+(verified live: `FullTime`=2 on football/tennis/baseball, `1st Set`=12 on `.com`
+*and* `cuotasahora.com`, football `1st Half`=3 / `2nd Half`=4, baseball
+`FT incl. OT`=1). `PeriodSelector.select_by_scope` reads the current scope
+(no click if already correct — the common Full-Time case) else clicks each period
+tab and re-reads the scope until it matches. It returns `True` **only on an exact
+scope match**, so a wrong period is never silently selected; `None` when the
+`(sport, period)` scope is not in the verified map, which makes the extractor
+fall back to the old label matching (unchanged on `.com`).
+
+Two traps when extending the scope map (`OddsPortalSelectors.PERIOD_SCOPE_CODES_*`):
+
+1. **Scope is keyed by period *concept*, not by enum name.** Baseball's
+   `FirstHalf` enum renders as `1st Inning` = scope **17**, not the football half
+   = scope 3. So `FirstHalf`/`SecondHalf`/`FirstSet` live in the per-sport map,
+   not the universal one. Only `FullTime`=2 is universal (verified across three
+   disparate sports).
+2. **Only add scopes you verify live.** Do not guess the remaining ones
+   (quarters, later sets, hockey periods, `FT incl. OT` on basketball/amfootball):
+   the `/results/` listings lazy-load match links, so capture from an in-play or
+   finished match detail page and read `location.hash` after clicking each tab.
+   Unverified periods stay on the label fallback — correct on `.com`, no silent
+   wrong data on mirrors thanks to the exact-match rule.
+
+### The odds-history tooltip header has the same trap (issue #70 follow-up)
+
+`--odds-history` hovers each bookmaker odds cell to open the "Odds movement"
+tooltip, then reads `h3 → parentElement` to capture the modal. The old selector
+`h3:text('Odds movement')` matched the **localized** header (`$t("odds_movement")`
+in the Vue bundle), so on `cuotasahora.com` the `wait_for_selector` timed out:
+no modal captured → **both odds history and opening odds silently empty**, while
+closing odds (parsed from the main row, hover-independent) still came through.
+This is the reported "only closing odds" symptom.
+
+**The fix — match the header by its stable class, not its text.**
+`ODDS_MOVEMENT_HEADER = "h3.font-semibold.uppercase.leading-6"`. Verified in the
+`Event-*.js` bundle: the match page contains exactly two `<h3>` elements, both
+the odds-movement tooltip header (bookmaker variant `HistoryBackAndLayTooltip`
+and exchange variant), sharing class `text-sm font-semibold uppercase leading-6
+text-[#2F2F2F]`. No section-title `<h3>` exists, so the class match is unambiguous
+and only one tooltip is shown per hover.
+
+**The dates inside the tooltip are *not* localized** — do not "fix" the
+`"%d %b, %H:%M"` parse. The client renders them via `phpJsDate("d M, H:i", …)`,
+whose month/day arrays are hardcoded English in the bundle, so `"10 Jun, 14:30"`
+is emitted on every mirror regardless of `html lang`.
+
+### How `--base-url` works
+
+`--base-url` accepts a mirror root (e.g. `https://www.centroquote.it`) and
+swaps the scheme + host at runtime via `rebase_url()` in `url_builder.py`. The
+100+ league URLs stored in `sport_league_constants.py` remain absolute
+`.com` addresses (canonical default); the swap is applied just before each
+network request. No changes to league constants are needed when targeting a
+mirror.
+
+### Detection signal
+
+If results return 0 bookmakers or fewer bookmakers than expected from a given
+region, and the scraper is pointing at `www.oddsportal.com`, the user may be
+hitting the `.com` bookmaker set instead of their regional set. The fix is
+`--base-url <regional-mirror>` paired with `--locale`/`--timezone` matching
+that region.
+
+### HAR-replay limitation
+
+Integration tests under `tests/integration/` record against `www.oddsportal.com`
+and replay against `.com` URLs only. `--base-url` is therefore a **live-only
+feature**: there are no HAR fixtures for any mirror domain, and running the
+integration suite in replay mode will not exercise this code path. Do not add
+HAR fixtures for mirror domains — replay them as `.com` and test the
+`rebase_url` logic unit-level instead.
+
+### Fix pattern / when extending this feature
+
+1. Validate the mirror's page structure manually before adding support for a
+   new domain: confirm CSS selectors and JSON shapes match `.com`.
+2. Keep `sport_league_constants.py` `.com`-canonical — never store mirror URLs
+   there.
+3. Unit-test `rebase_url()` in `test_url_builder.py` for any new URL shape
+   (trailing slash, path-only, etc.).
+
+**Reference:** PR implementing `--base-url` (`feat/regional-base-url`), issue #45.
+
+---
+
+## §8 — Volleyball Over/Under and Asian Handicap each split into a Sets axis and a Points axis
+
+**Severity:** High — registering only one axis silently drops half the volleyball O/U and AH submarkets.
+
+Unlike handball (single goals axis), volleyball's `Over/Under` and `Asian Handicap`
+tabs each contain TWO independent submarket families, disambiguated only by a
+suffix word in the row label:
+
+| Tab | Submarket label form | Example |
+|---|---|---|
+| Over/Under | `Over/Under +{N}.5 Sets` | `Over/Under +3.5 Sets` |
+| Over/Under | `Over/Under +{N}.5 Points` | `Over/Under +184.5 Points` |
+| Asian Handicap | `Asian Handicap {±N}.5 Sets` | `Asian Handicap -2.5 Sets` |
+| Asian Handicap | `Asian Handicap {±N}.5 Points` | `Asian Handicap +5.5 Points` |
+
+The `specific_market` string passed to the extractor MUST include the trailing
+` Sets` / ` Points` word or the wrong family is matched. This mirrors tennis
+(`Games` vs `Sets`), not handball. Verified live against Italian SuperLega,
+May 2026.
+
+Volleyball also has NO draw-based markets (no `1X2`, `DNB`, `Double Chance`) —
+only `Home/Away`. Periods are `Full Time` + `1st`–`5th Set`. `Correct Score`
+outcomes are exactly `3:0 3:1 3:2 0:3 1:3 2:3` and exist only at `Full Time`.
+
+### HAR-replay consequence
+
+All volleyball league match pages use the H2H fragment URL pattern
+(`/volleyball/h2h/<t1-id>/<t2-id>/#<hash>`). Unlike the NBA/real-madrid-barcelona
+H2H pages, a *historic finished* volleyball match captured via `--match-link`
++ `--season` replays cleanly from its HAR (no runtime-cache-buster redirect
+chain), so `tests/integration/test_volleyball.py` runs deterministically in
+default HAR-replay mode — it is NOT marked `live_only`. The H2H fragment is
+still why a fixture must be *captured* (not hand-written): only a real capture
+resolves the fragment to the intended match.
+
+---
+
+## §9 — Listing pages return started/finished matches under "upcoming"
+
+**Severity:** Medium — `upcoming -d <today>` historically returned matches
+already in play or finished, polluting the "upcoming" semantics promised by
+the CLI (GitHub issue #58, point 2).
+
+`/matches/<sport>/<date>/` returns *every* match scheduled for that day, in
+all three states: upcoming, live, finished. **Per-row state is split across
+two elements** — there is no single source-of-truth field:
+
+| Match state | `[data-testid="time-item"]` `<p>` text | `[data-testid="game-status-box"]` text |
+|---|---|---|
+| Upcoming (not yet started) | `HH:MM` (kick-off clock) | **empty** (`<!---->` placeholders only) |
+| Live | period marker (`1S`, `4S`, `HT`, `1H`, `65'`) — note the live `<p>` carries class `text-red-dark` | **empty** (still!) |
+| Finished | unchanged kick-off clock (or empty) | `FinishedFIN` |
+| Postponed / Cancelled | unchanged kick-off clock | `Postponed` / `Canceled` |
+
+### Why both signals are needed
+
+The first wrong hypothesis to avoid: **`game-status-box` does not flip when
+a match goes live.** It only flips at FT (or for postponed/cancelled). During
+play, OddsPortal mutates `time-item` instead (the kick-off clock is replaced
+by a period marker, with `text-red-dark` class for visual emphasis).
+
+A status-box-only check passes live matches through — exactly the bug
+verified on volleyball 2026-05-20 (live `4S` and `1S` rows leaked through
+until the helper was extended to also check `time-item`).
+
+### Detection signal
+
+- `game-status-box` non-empty → finished/postponed/cancelled → drop.
+- `time-item` `<p>` text does **not** match `^\d{1,2}:\d{2}$` → live → drop.
+- Both empty/match `HH:MM` → upcoming → keep.
+
+Don't match on the `text-red-dark` Tailwind class for live state — class
+names churn on React rebuilds (see §1 / set_odds_format). Match on the
+text content shape, which is what OddsPortal renders for users to read.
+
+### Fix pattern
+
+`base_scraper._row_has_started(row)` combines both checks. Wired through
+`extract_match_links(skip_started=…)` → `scrape_upcoming(include_started=…)`
+→ CLI `--include-started/--no-include-started` (default no = filter out
+started/finished). The helper is fail-safe: a row missing both elements
+(future DOM rename) is kept rather than silently dropped.
+
+### When OddsPortal renames either testid
+
+The filter degrades open: missing testid → helper returns False → started
+rows leak through. Symptom mirrors the original issue #58 bug. Recapture
+listing HAR fixtures and inspect the DOM before touching the helper.
+
+---
+
+## §10 — Listing date-headers are grouped in the browser's timezone
+
+**Severity:** Medium — `upcoming -l <league> -d <date>` silently returned 0
+matches for South American leagues (GitHub issue #58 follow-up).
+
+OddsPortal renders the `[data-testid="date-header"]` groups on a league
+listing page using the **browser context's timezone** — not UTC, and not the
+competition's local time. A match kicks off at a single instant, but which
+date-header it appears under depends entirely on the timezone the page was
+rendered in.
+
+This bites cross-timezone competitions hardest: a Copa Libertadores match
+kicking off 21:30 in Argentina (UTC-3) renders under the **22 May** header in
+`Europe/Paris` (UTC+2). A user requesting `-d 20260521` then gets 0 results —
+the match is real and upcoming, just filed under the next calendar day.
+
+### Detection signal
+
+- The browser timezone is whatever `--timezone` / `OH_TIMEZONE` sets, and it
+  **falls back to the host system timezone** when unset — *not* UTC.
+- Two timezones must agree or dates drift: the one the browser **renders** in,
+  and the one `_parse_date_header` **resolves** "Today"/"Tomorrow" in. When
+  `timezone_id` is unset, `PlaywrightManager.initialize` resolves the effective
+  browser timezone (`Intl.DateTimeFormat().resolvedOptions().timeZone`) so both
+  sides share one zone.
+- Symptom: `upcoming -l … -d …` returns 0 matches while the league page
+  visibly has fixtures. `extract_match_links` emits a WARNING listing the date
+  headers actually seen when a filter matches nothing.
+
+### Fix pattern
+
+- Keep parsing and rendering on the same zone (resolve the effective tz once,
+  at context creation).
+- There is no "competition-local date" the scraper can infer — the user
+  expresses intent with `--timezone`. Don't try to guess it per league.
+
+### References
+
+- `core/playwright_manager.py` — effective-timezone resolution.
+- `base_scraper._parse_date_header` / `_resolved_browser_timezone`.
+- `upcoming --links-only`: a null `kickoff_utc` under the default
+  `--no-include-started` has two causes. Usual: the date header failed to
+  parse, the same signal as the WARNING `extract_match_rows` already emits.
+  Silent: if OddsPortal renames the `time-item` testid, `_row_has_started`
+  degrades open (see §9) and every row's kickoff comes back null with no
+  log output at all.
+- GitHub issue #58 follow-up.
+
+---
+
+## §11 — Multi-proxy contexts each need their own warm-up (odds format + cookie consent are per-`BrowserContext`)
+
+**Severity:** High — silently wrong odds values, not a crash or empty result.
+
+Odds format (`Decimal Odds` vs `Fractional`/`American`) and cookie-consent
+acknowledgement are **`BrowserContext`-scoped state** on OddsPortal, not
+domain-wide. The single-proxy flow sets both once, at startup, before any
+match is scraped. Multi-proxy rotation breaks that assumption: each
+`--proxy-url` gets **its own** `BrowserContext` (Playwright configures a
+proxy at context-creation time, not per-request), so a context that is
+never warmed renders match pages in OddsPortal's default (non-decimal) odds
+format — and odds values parsed from it are silently wrong, with no
+exception raised.
+
+### Detection signal
+
+- Symptom: with `--proxy-url` passed more than once, some scraped matches
+  have odds values off by a format conversion (e.g. fractional `5/2`
+  parsed as if it were decimal `2.5`, or vice versa) while others from the
+  same run are correct.
+- No parsing exception is raised — the DOM is well-formed, just in the
+  wrong format, so extraction "succeeds" with corrupted numbers.
+- Only reproduces with 2+ proxies; single-proxy (or no-proxy) runs warm
+  the one context they use at startup and never hit this.
+
+### Fix pattern
+
+`base_scraper._warm_proxy_contexts()` navigates each non-default proxy
+context to `ODDSPORTAL_BASE_URL`, dismisses the cookie banner
+(`CookieDismisser.dismiss`), then calls `set_odds_format` — once per
+context, before that context scrapes any match. It's called from
+`extract_match_odds` before match links are dispatched round-robin across
+the proxy pool, and tracks already-warmed contexts in `_warmed_proxy_keys`
+so each proxy is only warmed once per run. Any future per-context setup
+(locale-dependent state, new format/consent flags) must go through this
+same warm-once-per-context path — don't assume a page inherits state from
+another context on the same proxy pool.
+
+### References
+
+- `core/base_scraper.py` — `_warm_proxy_contexts`, `_warmed_proxy_keys`.
+- `core/playwright_manager.py` — `non_default_context_keys`,
+  `new_page_on_key` (one `BrowserContext` per proxy).
+- `core/browser/cookies.py` — `CookieDismisser`.
+
+---
+
+## §12 — OddsPortal match pages expose no average odds to scrape
+
+**Severity:** Medium — kills any "average odds" feature idea before it starts; must be discovered before implementation, not during.
+
+There is no "Average" or "Highest" aggregate row anywhere in a rendered
+OddsPortal match-detail page. Verified three ways on 2026-07-06:
+
+1. Live render of a current match (desktop viewport, cookie dismissed,
+   fully scrolled) — the string "average" appears nowhere in the DOM.
+2. HAR replay of two captured markets (1X2 + Over/Under) — same result.
+3. The `Odds.vue` bundle (`build/assets/Odds-*.js`) does declare
+   `oddsAvgOdds`/`oddsMaxOdds` props, but their render path only fires for
+   listing `pageName`s (`inplay-live`, `tournament-next-matches`,
+   `outrights`) — never the match/event page.
+
+On the tested line (Over/Under +0.5), the **collapsed submarket row was
+observed to be the HIGHEST odds across bookmakers, not the average** — the
+collapsed "under" odd (9.50) equalled the bookmaker maximum, not the mean
+(8.12). Reading that row (what `--preview-only` does) yields best odds,
+not an average, at least on the tested line.
+
+The README and docstrings previously described `--preview-only` as an
+"average odds" mode — that was inaccurate and has been corrected to
+"best/highest odds" wording (see `README.md`'s Advanced Options table and
+the `preview_submarkets_only` docstrings in `base_scraper.py` /
+`odds_portal_market_extractor.py`).
+
+The odds feed (`/match-event/*.dat`) is also a dead end for this: it's an
+encrypted base64 blob decrypted client-side, so no average can be read
+from the raw response either.
+
+### Detection signal
+
+- A feature request asks for "average odds" or "average line" and the
+  instinct is to find a DOM node or feed field to scrape for it.
+- Grepping rendered match-page HTML/JSON for "average"/"avg" comes back
+  empty, or a `oddsAvgOdds` prop is found in the bundle but never reached
+  from an event page's `pageName`.
+
+### Implication
+
+An "average odds" feature must **compute the mean from the per-bookmaker
+rows the scraper already parses** — there is nothing labeled "average" to
+scrape on match pages. This is why the average-odds half of the
+umbrella/average-odds feature was dropped after a feasibility spike; only
+the umbrella market tokens (`over_under`, `asian_handicap` expanding to all
+rendered lines) shipped. See issue #71.
+
+---
+
+## §13 — Community Top Predictions: parse the DOM, not the AJAX feed; community data is pre-match only
+
+**Severity:** Medium — the obvious data sources are either encrypted or absent, and the visible percentages are not authoritative.
+
+The `community` command scrapes the Top Predictions page
+(`/predictions/#sport/<sport>/`). Several instincts lead nowhere here; record
+them before the next contributor re-discovers each one.
+
+### The AJAX feed is a dead end — parse the rendered DOM
+
+The Top Predictions page and the community homepage widgets are fed by
+`ajax-topPredictions/<sport>/` and `ajax-top-predictions/homepage/`, whose
+payloads are obfuscated and decoded client-side by `lscompressor.min.js`. Do
+not try to read the XHR. Parse the rendered DOM instead: the community pages
+reuse the same `data-testid` vocabulary as match pages (`game-row`,
+`event-participants`, `odd-container-default`, `prediction-container`,
+`betting-tip-header`, `sport-country-league-item`).
+
+### Sport switching is fragment-routed — the scraper needs a sport guard
+
+The page switches sport via the URL fragment. Direct fragment navigation is
+**not guaranteed** to load the requested sport for non-default sports (the SPA
+may keep serving the default sport's rows). The scraper therefore drops any row
+whose `match_url` path does not start with the requested sport slug — a §1-class
+guard against silently mislabeling one sport's picks as another's. Note
+`ice-hockey` maps to the site slug `hockey` in that path check.
+
+### Match pages: `pageVar` holds raw vote counts, but it is null on finished matches
+
+Each match page embeds a `var pageVar` JSON blob whose
+`predictionData.communityData` holds **raw per-outcome vote counts for every
+market without any tab click** (keys of the form
+`E-<eventId>_<bettingTypeId>_<scopeId>_?_<handicap>`). Two traps:
+
+1. `communityData` is `null` on **finished** matches — OddsPortal drops
+   community data once a match ends. This is why the feature is pre-match only:
+   there is no way to backfill; build longitudinal datasets by scraping while
+   matches are upcoming.
+2. The visible `user-predictions-row` percentages can **lag** `pageVar` by a
+   server-cache snapshot (they come from different caches; observed 11/16/74 in
+   the row vs 10/15/75 in `pageVar` on the same page load). Neither is "wrong";
+   don't assert the two agree.
+
+### Percentages are rounded — never assert an exact 100 total
+
+Community vote percentages are rounded and may sum to 99–101. Never assert an
+exact 100 total.
+
+### Community date tokens use a `/` + trailing-comma form base_scraper rejects
+
+Non-today community rows carry date tokens like `19/Jul,` (slash separator,
+trailing comma) which `base_scraper._parse_date_header` does **not** accept. The
+community parser normalizes the token locally before delegating to
+`_parse_date_header`. Unparseable kickoffs yield `kickoff = None` (the raw label
+is kept in `kickoff_text`), so a token-format drift degrades to a null kickoff,
+not a crash.
+
+### Match-page community votes: raw counts exist, but outcome labels don't
+
+`--match-url` reuses the same `pageVar.predictionData.communityData = {total, count,
+group}` blob described above, but here the labels matter and most of them are
+unrecoverable. `total[E-<eventId>_<bettingTypeId>_<scopeId>_<col>_<handicap>]` is the
+per-market vote total; `group[encodedOutcomeId] -> marketKey` and
+`count[encodedOutcomeId] -> votes` give the per-outcome split. **Outcome labels are NOT
+recoverable**: the `encodedOutcomeId`s are `lscompressor`-obfuscated and only appear
+inside the React hydration `data` blob, never on the odds cells themselves. Betting-type
+and scope ids are canonical and stable (`community_constants.py`: `1`=1X2, `2`=O/U,
+`4`=DoubleChance, `5`=AsianHandicap, `6`=DNB, `13`=BTTS; scope `2`=FT, `3`=1H, `4`=2H).
+`communityData` is `null` on finished matches, same as the Top Predictions page; teams,
+`isStarted`, `isFinished`, and `startDate` come from the `#react-event-header` `data`
+JSON instead. `[data-testid="match-facts-prediction"]` holds the one aggregate pick that
+does come with a label.
+
+### User profiles: header always renders, stats/predictions only when public
+
+`/profile/<username>/` always renders the header (`username`, `user-roi`, `member-info`
+with `Profile Privacy: Public|Private`), even for a private profile. The monthly stats
+table (siblings of `stats-table-header-line`, **not** inside `stats-table-box`) and the
+predictions list render only when the profile is public: **most profiles are private**,
+so `--user` frequently returns header-only records with empty stats/predictions. Public
+profiles are hard to find via the ROI leaderboard (every sampled leader was private); the
+`/users/` list and `community/feed` are mostly private too. Profile prediction rows reuse
+match-row testids (`game-row` etc.) but have **no `betting-tip-header`**: outcomes are
+positional, with no 1/X/2 labels, and there is no reliable per-row win/loss signal, so
+use the stats table for win/loss instead of trying to infer it per prediction.
+
+### References
+
+- `core/community/` — parser + scraper/runner.
+- `cli/commands/community.py` — the `community` command.
+- `tests/integration/test_community_predictions.py` — HAR-replay coverage.
+
+---
+
+## §14 (Cricket): one market, one period, and no per-bookmaker odds on detail pages
+
+**Severity:** Medium (sets expectations: cricket scraping yields metadata only, and shapes the integration test).
+
+Cricket on OddsPortal exposes a single market tab: `Home/Away`, a 2-way match
+winner with no draw outcome, for limited-overs formats (T20, ODI). There is no
+`Over/Under` tab or any other market. Registered market key is `home_away`.
+
+There is also a single period tab, labelled `FT including OT` (OddsPortal
+reuses the same label baseball uses, even though cricket has no overtime
+concept). It maps to `CricketPeriod.FULL_INCLUDING_OT`, scope code 1 (same
+scope id as baseball's `FT incl. OT`, per §7's period-scope map).
+
+### No per-bookmaker odds on cricket detail pages (any region)
+
+**Superseded by the 2026-08 redesign (§19):** redesigned cricket detail pages
+DO render a per-bookmaker odds table (verified live 2026-08-24; the ODI
+integration fixture now asserts non-empty odds). Kept for history:
+
+Cricket match-detail pages carry no per-bookmaker odds table. `home_away_market`
+comes back empty on every match tested, including marquee internationals
+(verified: England vs India, One Day International) and through a non-France
+proxy. The detail page itself renders "No odds available for this match". The
+listing pages show an aggregate teaser price per side, but that value is not
+exposed in the per-bookmaker detail table the scraper reads. Scraping cricket
+therefore yields correct match metadata (teams, league, score, result) with an
+empty odds list, which is what `tests/integration/test_cricket.py` asserts.
+
+Separately, from a France IP the cricket results LISTINGS are geo-filtered to
+empty ("no odds available from your selected bookmakers") while the market and
+period tabs still render. A non-France IP restores the listings, so the HAR
+fixture had to be proxy-captured, but a non-France IP does not restore the
+missing detail odds because those do not exist for cricket in any region.
+
+### Detection signal
+
+- A cricket scrape returns populated metadata (teams, league) with an empty
+  `home_away_market`. This is expected for cricket, not a parsing bug.
+- The detail page shows "No odds available for this match" regardless of the
+  scraping IP's geography.
+
+### Open item: multi-day formats may expose a `1X2` market (unverified)
+
+Multi-day formats (Test matches, Sheffield Shield, Ford Ranger Cup) can end in
+a draw, which limited-overs cricket cannot, so they likely expose a separate
+`1X2`-style market (win/draw/win). This is unverified (checked during the
+off-season with the France geo-filter also hiding odds) and is deferred as a
+follow-up rather than guessed at. See the "Follow-up" section of the cricket
+support task notes for the drop-in shape (`CricketMarket.ONE_X_TWO`) once this
+is confirmed live.
+
+### References
+
+- `utils/sport_market_constants.py`: `CricketMarket.HOME_AWAY`.
+- `utils/period_constants.py`: `CricketPeriod.FULL_INCLUDING_OT`.
+
+---
+
+## §15: The season/league cartesian product cannot pre-filter invalid pairs, because HTTP 200 is not validation (§4)
+
+**Severity:** Low (informational). Explains a design decision so a future contributor does not "fix" it into a network validation step.
+
+`historic --season` accepts a comma-separated list and is scraped as the
+cartesian product with `--league`, sequentially, league outer and season
+inner (issue #78, `_scrape_league_season_combos` in
+`core/scraper_app.py`). Some leagues changed season format mid-history
+(Russia moved from calendar-year to autumn-spring format in 2011-2012),
+so a bulk request spanning that boundary has to pass both formats and
+accept that the wrong-format pairs return nothing.
+
+The scraper does not try to pre-filter which `(league, season)` pairs are
+valid before scraping them. It cannot: §4 established this behaviour for
+dead league-slug URLs, and by analogy the same pattern holds for wrong
+season suffixes. A dead season URL on OddsPortal returns HTTP 200 with a
+valid-looking `<title>`, and only the absence of `eventRow` match links
+reveals it is dead. There is no cheap request (a HEAD, a status check)
+that tells a wrong-format season apart from a right one; the only signal
+is doing the actual listing scrape and counting links. A pre-filtering pass
+would cost the same network round trip as just scraping the combo, for no
+benefit.
+
+Because a zero-link result is the expected shape for an invalid pairing, not
+a scraper malfunction, a combo returning zero results is reported in the
+end-of-run summary table (`_format_combo_summary` in
+`cli/commands/historic.py`) as a zero-count row, not as an error, and does
+not affect the exit code. Only combos that raise (network error, parse
+exception) count toward the "errored" total; those are the ones worth
+re-running.
+
+### Detection signal
+
+- A bulk `--season` run against a league that changed format shows some
+  combos with a `0` count in the end-of-run table. That is expected, not a
+  bug, when the run intentionally passes both old- and new-format seasons.
+- Don't add a pre-scrape validation step for `(league, season)` pairs. It
+  can't be cheaper than the scrape itself (§4), and it would only duplicate
+  the zero-link signal the scraper already produces.
+
+### Fix pattern (i.e., how not to "fix" this)
+
+- Keep treating zero links as a normal, non-error outcome. If a future
+  report conflates "zero results" with "the scraper is broken," point back
+  to this entry and §4.
+- A cheap index does exist for the *slug* half of the problem: the season
+  selector on `<league>/results/` (§4). It says which seasons the site has and
+  under which slug, so it removes renames as a cause of empty combos. It does
+  not remove the brute force: the selector is read from the same page the walk
+  already loads, and a season the selector lists can still hold no odds.
+- A wrong pair does not always come back empty. Some redirect to the league's
+  current fixtures, which is why `scrape_historic` fails a season whose landed
+  URL no longer matches the requested one (§4).
+
+### References
+
+- §4's "HTTP 200 is not validation" point.
+- `core/scraper_app.py`: `_scrape_league_season_combos`.
+- `cli/commands/historic.py`: `_format_combo_summary`.
+- Issue #78.
+
+---
+
+## §16 — In-play (live) pages are a separate URL space with their own end-of-match signal
+
+**Severity:** High — treating the in-play view like a normal match page yields
+pre-match odds mixed with live ones, and finished matches silently recorded as
+live.
+
+OddsPortal serves live betting from a dedicated URL space, not from the pages
+the `upcoming` / `historic` commands already know:
+
+| What | URL |
+|---|---|
+| Matches in play now | `/inplay-odds/live-now/<sport>/` |
+| Matches that will have live odds | `/inplay-odds/scheduled/<sport>/` |
+| One match's live view | `<match_url>/inplay-odds/#<match_id>` |
+
+On a match page, **"Pre-match Odds" and "In-Play Odds" are two distinct tabs
+over the same event**. They must never be mixed in one record: the pre-match
+tab keeps serving its own bookmaker table while the match is running.
+
+### The live-now listing is not shaped like `/matches/`
+
+Rows carry no `eventRow` class. They are `[data-testid='game-row']` elements,
+and the same testid appears **twice per row**: once on the outer container and
+once on a nested div inside the anchor. Iterating the testid therefore yields
+roughly double the rows. Dedupe on the href, and skip nodes with no in-play
+anchor among their descendants. Listing hrefs already carry the
+`/inplay-odds/#<id>` suffix, so they need no rewriting.
+
+### A finished match keeps its live header
+
+The first wrong hypothesis to avoid: **the `live-info` container does not
+disappear when a match ends.** It stays, and the period marker is replaced by a
+terminal string (`Final result`, verified 2026-07-20 on tennis). Treating
+"container absent" as the only end-of-match signal lets finished matches through
+with `live_period = "Final result"`, exactly the bug the smoke test caught.
+
+Detection needs both signals:
+
+- container absent → not live;
+- container present but the period marker is a terminal state → not live.
+
+Text chunks in this container are separated with **non-breaking spaces**
+(`Final\u00a0result`), so normalize `\u00a0` before comparing. The main score
+uses a colon (`1:0`), but OddsPortal renders scores with an en-dash elsewhere,
+so accept both.
+
+The period marker is sport-specific and must never be parsed as a fixed
+vocabulary. It is not even consistent *within* a sport: football alternates
+between elapsed minutes (`4'`) and named phases (`Half-time`), both verified
+2026-07-20. Also verified: `1st Set` / `2nd Set Tiebreak` (tennis), `9th Inning`
+(baseball). Match on shape instead: a chunk of the form `N:N` is the score, the
+remaining chunk is the period. Any attempt to enumerate the vocabulary will be
+wrong within one sport, let alone across eleven.
+
+### Being in play is not the same as having in-play odds
+
+A match can be visibly live on `/matches/<sport>/` (its `time-item` showing
+`4'`) and still be absent from `/inplay-odds/live-now/<sport>/`. Verified
+2026-07-20 on a Kazakh women's league match: the site linked it to its
+`/inplay-odds/` view, the live header rendered a period and a score, and the
+odds table said **"No odds available for this match"**. The live-now listing is
+the set of matches with *bookmaker in-play coverage*, which is much smaller than
+the set of matches in play, and smaller again outside peak hours and top
+leagues. Scraping the live-now listing is therefore the right entry point; do
+not "fix" an empty result by falling back to the general listing, or you will
+collect matches that carry no odds at all.
+
+### The page polls itself; the scraper must not
+
+An open in-play page refreshes odds in place via first-party feeds
+(`/feed/live-event/*.dat` roughly every 10s, `/feed/postmatch-score/*.dat` every
+3-4s) and mutates the DOM without navigating. A snapshot therefore needs exactly
+one page load and one parse. Never add a reload loop: repeated refreshes are the
+clearest bot signal this feature could send (see §6).
+
+### In-play bookmaker coverage is thin and geo-dependent
+
+A live match commonly exposes 2 to 4 bookmakers where the pre-match tab shows 15
+to 20 (observed from a French IP: Betclic.fr, Winamax, Bets.io, Stake.com). A
+near-empty in-play odds table is normal, not an extraction failure. Coverage
+varies by region, like the Pinnacle case in §3.
+
+### Live pages are ephemeral, so HAR fixtures are capture-once
+
+Once a match finishes, its in-play view is gone for good. A HAR must be captured
+while the match runs. Replaying it does *not* bring the live view back, see the
+next subsection; the self-discovering live-network test (`--live`) is what
+actually exercises this path.
+
+A live HAR is not a frozen instant. The page self-refreshes via first-party
+`.dat` feeds, and recording in `record_har_mode="full"` stores every snapshot
+that arrived during capture. On replay, timing selects one of them, so
+`live_period` and `live_score` are non-deterministic across replays of the same
+HAR (a match captured at `Half-time` replayed later as `49'`). A replay test must
+assert the *shape* of the live context (a period marker is present, the score
+matches `\d+:\d+`) and the *fixed identity* of the match (teams, league, date,
+odds table), never the captured period or score value.
+
+### An in-play page does not replay from a HAR
+
+**Severity:** Medium — costs a day of debugging a "regression" that is a replay
+limit, and any future in-play replay fixture will hit it too.
+
+Replaying a live match page from its own HAR renders the **pre-match** variant of
+the event header. `data-testid="live-info"` never mounts, so the scraper
+correctly classifies the match as no longer live and drops the record: the run
+exits 0 with no output. The odds tab bar (`Pre-match Odds` / `In-Play Odds`)
+never renders either, though a bookmaker table does.
+
+The data is not the problem. The recorded SSR payload carries
+`isLive: true`, `realLive: true`, `isFinished: false` and the live text
+(`Half-time 0:0 (0:0)`); every recorded request is served; there is no JS error.
+The client simply does not mount the in-play view.
+
+Investigated 2026-07-26, five causes ruled out by isolated experiment:
+
+- the 3 requests absent from the HAR (`ajax-getCount/MyBookmarks/`, a header
+  icon, analytics) — stubbing them with empty 200s removes every JS error and
+  changes nothing;
+- the `.dat` feeds — blocking them one at a time and together changes nothing;
+- wall-clock — pinning the browser clock to the capture instant with
+  `context.clock` changes only the rendered date label;
+- a cold session — replaying the full capture journey (homepage first, cookies
+  set) changes nothing;
+- the URL fragment — present or absent, same result.
+
+The remaining suspect is state the HAR cannot hold (a real-time channel, or
+responses served from the browser HTTP cache during capture and therefore never
+recorded — `MyBookmarks` is provably in that category). Same family as the H2H
+fragment limit in the `live_only` tests.
+
+Consequence: do not write a replay test that asserts the live header. The
+existing one is kept as `xfail` rather than `live_only`, because the captured
+match is over and `--live` would have nothing to scrape, which would make the
+marker a permanent no-op.
+
+### Related observation on §9 (unconfirmed)
+
+While investigating, a `/matches/football/` listing appeared to render
+`FinishedFIN` inside `time-item`, where §9's table places it in
+`game-status-box`. The selector used may have matched a parent node, so this is
+**not confirmed drift**. It has no functional impact either way:
+`_row_has_started` flags the row through its time-item branch as well. Worth
+re-checking at the next listing fixture recapture.
+
+---
+
+## §17 — A listing page can answer 200 with zero rendered rows, and silence looks like success
+
+**Severity:** High — a run returns one page of a multi-page season, reports zero
+failures, and exits 0. Nothing downstream can detect the gap from the data.
+
+Observed 2026-07-20 on `england-premier-league --season 2022-2023 --links-only`:
+50 links instead of 380, `0 listing pages failed`, pagination correctly detecting
+8 pages. Intermittent, and it does not reproduce back to back: it appears on cold
+or degraded runs, and disappears once the site is answering fast.
+
+### Why zero rows is not an error anywhere in the chain
+
+Three behaviours compose into a silent truncation:
+
+- OddsPortal answers **200 with an empty result set** when it throttles. There is
+  no error status to react to (same lesson as §4 and §15).
+- `extract_match_links` wraps its whole body in `try/except` and returns `[]` on
+  any failure, which is deliberate fail-safe behaviour against DOM drift.
+- The collection loop then counted the page as collected regardless of what came
+  back, so `[]` incremented `successful_pages`.
+
+Each piece is defensible alone. Together they turn a blocked page into a
+successful one carrying no data.
+
+### Detection signal
+
+Suspect this whenever the collected count is an exact multiple of a page's worth
+(50 on results pages) while pagination reported more pages than that. Concretely:
+`Final pages to scrape: [1..8]` followed by `Total links found: 50` and
+`Failed pages: 0` is the fingerprint.
+
+### The distinction that matters for the fix
+
+Zero links is only contradictory when pagination promised more than one page.
+A genuinely empty season has exactly one page and returns zero links, and that is
+the documented, expected way to discover an invalid league/season pair (§15). So
+the rule is: **more than one page planned and a page yields nothing → that page
+failed**; one page planned and it yields nothing → legitimately empty.
+
+Failures raised this way flow into `ErrorType.LISTING_PAGE`, which is distinct
+from a per-match failure on purpose: a per-match failure names a URL you can
+retry, whereas a lost listing page hides an unknown number of matches that were
+never discovered.
+
+### Two hypotheses to skip if this resurfaces
+
+Both were measured and refuted on 2026-07-20, so do not spend time on them again:
+
+- *A race on pagination detection.* Pagination is server-rendered and present at
+  `t=0`; a probe sampling `a.pagination-link` every 500ms found all 8 pages
+  immediately on every run.
+- *Stale page-1 content behind the `#/page/N` fragment.* The fragment never
+  reaches the server, so the concern is reasonable, but the SPA swaps the rows
+  within ~250ms even with `wait_until="domcontentloaded"`. The page shows no rows
+  at all before that, never page 1's rows.
+
+### The same degradation also hits the pagination read (issue #79, 2026-07-27)
+
+Observed on `italy-serie-a --season 2025-2026 --links-only`: one cold run in four
+logged `Found 0 pagination links`, planned `[1]`, collected 50 links and reported
+`Failed pages: 0`. The other three runs read 8 pages and collected all 380.
+
+The detection signal above cannot match this variant. It keys on
+`Final pages to scrape: [1..8]` with 50 links, but here the widget itself read
+empty, so only one page was ever planned and the `len(pages_to_scrape) > 1` guard
+exempted itself by construction.
+
+Do not re-open the race hypothesis refuted above: the countermeasure is
+corroboration across pages, not timing. Two facts make it work, both verified live:
+
+- A results page renders 50 links when full (`RESULTS_PAGE_SIZE`). Serie A
+  2025-2026 gave 50 on pages 1-7 and 30 on page 8, totalling 380. A full page
+  therefore implies another page exists, whatever the widget says.
+- A page past the end (page 9 of 8) renders **zero** rows but still shows a
+  pagination widget reporting max 8. So an empty page is only "past the end" when
+  the widget on that page corroborates it; otherwise it was degraded.
+
+The widget is now read on every page rather than only the first, which costs no
+extra request since the tab is already loaded. When page 1's response is degraded,
+page 2's widget still reports 8 and the true count is recovered immediately.
+
+Current markup, for when it drifts again: `<a class="pagination-link"
+data-number="2">2</a>`, with `Next`/`Prev` sharing the class and carrying **no**
+`rel` attribute. The long-standing `:not([rel='next'])` clause in the old selector
+was therefore inert; digit filtering is what excludes them.
+
+### The same silence covers *partial* pages, not just empty ones (issue #78, 2026-08-01)
+
+Reported on a 40-combo run: `Collected 6787 match links (0 listing pages failed)`
+while Bundesliga 2024-2025 returned 173 against 308 in every other season of the
+same league, Serie A 290 against 380, Ligue 1 219 against 310. Watching the run,
+some mid-season listing pages rendered 5 rows instead of 50.
+
+The empty-page guard above did not apply, because the page was not empty. Two
+behaviours composed:
+
+- The verdict only tested `link_count == 0` below the frontier, so 5 links out of
+  50 read as a normal page: collected, counted in `successful_pages`, absent from
+  `failed_pages`, exit code 0.
+- `scroll_until_loaded` judges stability **relatively**: the element count
+  unchanged across `MAX_SCROLL_ATTEMPTS` polls returns `True`. It holds no
+  expected count, so a lazy-load stalled at 5 rows stabilizes at 5 and reports a
+  successful scroll. `scroll_ok` therefore cannot discriminate a truncated page
+  from a complete one, and any guard built on it would have missed this.
+
+The invariant that does work is positional, not behavioural: **below the frontier
+the widget has promised a later page exists, so this page is not the last and must
+be full**. Fullness alone decides there; `scroll_ok` stays out of it. At or beyond
+the frontier the existing rule stands, since the last page is legitimately short.
+
+A page ruled failed is now fetched once more before being written off
+(`LISTING_PAGE_RETRY_ATTEMPTS`). None of the three existing retry layers covers
+this: `retry_with_backoff` only fires inside an `except` and only on
+`TRANSIENT_ERROR_KEYWORDS`, and a truncated page answers 200 and raises nothing.
+The combo-level retry would also be the wrong grain, since it replays the whole
+season to recover one page.
+
+Residual hole, accepted: if the widget read is *also* degraded on page 1
+(`frontier == 1`) and page 1 is truncated, nothing corroborates, and a truncated
+page 1 is indistinguishable from a genuinely small single-page league. No signal
+exists to separate them; the re-fetch is what covers it in practice, since a
+second attempt usually restores both the widget and the rows.
+
+### When investigating, do not hammer the site
+
+The truncation is triggered by degradation, so the instinct is to run the scrape
+repeatedly until it fails. That induces the throttling it is meant to observe and
+buries the original condition: five consecutive 8-page scrapes in seven minutes
+produced a run where six pages failed outright and one took 17 minutes. Reproduce
+with spaced cold runs, and prefer a unit test over live repetition.
+
+---
+
+## §18 — Struck-through odds are a real state; `odds-status-indicator` is not
+
+**Severity:** Medium — the state is invisible to text-only parsing, and the obvious neighbouring signal means something else entirely.
+
+OddsPortal renders a bookmaker's odds with a strikethrough when that price is no
+longer on offer. The marker is a `line-through` class on the odds node inside the
+cell, driven by a per-outcome boolean from the decrypted feed:
+
+```js
+// build/assets/Event-*.js
+(a(), n("p", {key: 1, class: T(["odds-text", {"line-through": !g.active}])}, v(_e(te)), 3))
+// and, when the bookmaker has a betslip link:
+n("a", {class: T(["odds-link underline", {"line-through": !g.active}]), ...})
+// active is fed straight from the feed, indexed per bookmaker AND per outcome:
+active: r[y].act[b]
+```
+
+`OddsParser.parse_market_odds` reads cells with `get_text(strip=True)`, which drops
+the class, so a struck-through price used to be indistinguishable from a live one.
+It now probes each cell with `OddsPortalSelectors.ODDS_BLOCKED_SELECTOR` and emits a
+`blocked_outcomes` list on the row (key omitted when empty, odds values untouched).
+
+Match on the class, not on `p.odds-text` / `a.odds-link`: the bundle picks between
+those two elements based on `window.innerWidth >= 1150` and on whether a betslip
+link exists for that bookmaker. Both are runtime variables the scraper does not
+control.
+
+The probe (`select_one`) is descendant-only, matching against whatever is inside the
+cell matched by `ODDS_BLOCK_CLASS_PATTERN`. If OddsPortal ever moved `line-through`
+onto the cell element itself rather than a child, detection would silently return
+nothing — if blocked odds stop showing up, check the class's target element first.
+
+On a multi-value cell (e.g. Betfair back/lay, two prices in one cell) the flag is
+any-of: either sub-value struck through flags the whole outcome. Text extraction on
+such cells is already lossy on its own — the two prices concatenate (e.g.
+`1.601.62`) — pre-existing behaviour, out of scope here.
+
+### Two traps
+
+**A bookmaker with no odds is not a blocked bookmaker.** The placeholder row is
+built with `active: !1`, but it renders through a separate branch emitting `" - "`
+with no `line-through` class. Reading the class only ever flags cells holding a
+real value.
+
+**`odds-status-indicator` is a false friend.** Each row also carries a 6px coloured
+bar (`data-testid="odds-status-indicator"`) fed by a different field, `status`/`st`:
+`1 = FRESH ODDS`, `2 = DELAYED ODDS`, `3 = OLD ODDS`, forced to 3 once the match has
+started or finished. That is odds *freshness*, not availability — all seven rows of
+a finished match carried it with zero struck-through cells. Never read it as a
+blocking signal.
+
+### Detection signal
+
+- A feature request mentions "blocked", "suspended" or "crossed-out" odds, and the
+  instinct is to diff consecutive scrape runs to infer it.
+- Odds parsing is being changed and only the cell's text is being read.
+
+### Finding a live example
+
+It is rare on well-covered fixtures and easy to conclude, wrongly, that it does not
+exist. Two facts, both measured on 2026-07-29:
+
+- Seven hand-checked pages (finished, upcoming and live football, live tennis) gave
+  zero hits. A scripted sweep of lower-profile league listings hit one within
+  minutes — Albania Superliga.
+- Geography is a weak lever. A French residential IP is served seven bookmakers, a
+  datacenter IP a geo-generic panel of about nine, measured across ten rendering
+  geographies for the odds-evolution collector. More bookmakers is not what makes
+  the state appear.
+
+Browser-extension automation is the wrong tool for such a sweep: Chrome throttles
+timers in a hidden tab and any long loop stalls. Drive the project's own Playwright
+instead.
+
+---
+
+## §19 — The 2026-08 frontend redesign: data-testid DOM, H2H links everywhere, hash-driven match views
+
+**Severity:** Critical — every command returned zero data overnight (issue #85);
+this section records the new invariants the whole scraper is built on.
+
+Around 2026-08-10 OddsPortal shipped a full frontend redesign. Old selector
+generations died at once, and several long-standing behaviours flipped:
+
+### What changed (all verified live 2026-08-24)
+
+- **Listing rows** (upcoming and `/results/`): `div[class*='eventRow']` is gone;
+  rows are `[data-testid='game-row']`. Date headers are **siblings** of the row
+  groups (inside a `secondary-header` element), no longer children of the first
+  row — `extract_match_rows` walks headers and rows interleaved in document
+  order.
+- **Match links**: every listing row links to an H2H fragment URL
+  (`/<sport>/h2h/<home>/<away>/#<eventId>`). The old per-league match URLs
+  return **404** (this killed all pre-redesign integration fixture URLs).
+- **Pagination**: `a.pagination-link` is gone; digits are `<button>`s (current
+  page a `<span>`) inside `nav.pagination`, whose parent stays `display:none`
+  until the listing is scrolled to the bottom (read `text_content`, not
+  `inner_text`). The page fragment is now **`#page/N`** — the old `#/page/N`
+  is silently ignored and renders page 1 (a silent-truncation trap, cf. §17).
+- **Match pages**: SSR renders **no match content** — only an H2H landing
+  ("Select a match from the listings … `#MHaHJHqA:1X2;2`"). `#react-event-header`
+  and its embedded JSON no longer exist; the event id appears nowhere in the
+  DOM. The SSR JSON-LD (`SportsEvent`) describes the **next upcoming** meeting
+  of the two teams — same stale-upcoming trap as §1b — so venue data is only
+  trusted when its startDate matches the DOM date.
+- **Hash-driven match view**: content renders only for the full fragment form
+  `#<id>:<marketCode>;<scope>`, and **only after an in-page hashchange** — a
+  direct page load with the full hash stays on the landing skeleton. The nudge
+  (bare `#<id>`, then the full form + a dispatched `HashChangeEvent`) can fire
+  before the SPA has booted, so `_hydrate_match_view` retries it; hydration
+  complete = `game-time-item` rendered. Market and period switching are pure
+  hash rewrites (`MARKET_TAB_CODES` codes, `;<scope>` period ids — both were
+  already language-independent, §7).
+- **Because the SPA fetches the match by the fragment id, the rendered DOM is
+  always the requested match.** The §1a/§1b SSR-vs-DOM discrimination and
+  eventData.id resync machinery are obsolete (annotated in §1); the failure
+  mode left is "never hydrated", raised as a retryable
+  `H2HFragmentResolutionError` typed HEADER_NOT_FOUND (proxy-neutral).
+- **Odds are a real `<table>`**: one leaf `<tr>` per bookmaker — name in
+  `[data-testid='outrights-expanded-bookmaker-name']`, prices in
+  `odd-container` / `odd-container-winning` cells, payout in
+  `payout-container`. Collapsed submarket line rows use
+  **`odd-container-default`** cells and carry a decorative `<img alt="arrow">`
+  that the name-fallback chain happily returns — filtering odds cells to
+  `odd-container(-winning)` exactly is what keeps line rows out of bookmaker
+  parsing. Peripheral rows (`my-coupon-row`, `user-predictions-row`,
+  `odds-alert-row`) and the `betting-exchanges-section` (Back/Lay prices) sit
+  in the same tables and must be skipped. Expanded submarkets nest a full
+  bookmaker table inside a following `<tr>` — only leaf `<tr>`s (no nested
+  `tr`) are rows.
+- **Sub-nav tabs** (`sub-nav-active-tab`/`sub-nav-inactive-tab`) carry both the
+  bookies filter (All/Classic/Crypto Bookies) and the period tabs;
+  `bookies-filter-nav` and `kickoff-events-nav` containers are gone.
+- **live-info persists after full time** with a "Final result …" text that can
+  arrive as a single chunk — end-of-match detection matches terminal markers
+  by prefix (updates §16's assumption that live-info disappears).
+- **Cricket now has per-bookmaker odds** (supersedes §14's empty-market rule).
+- A **Login modal** (`[data-testid='modal']`, close button
+  `button[aria-label='Close']`) can block rendering on cold profiles;
+  `_dismiss_login_modal` runs before hydration.
+- `/matches/<sport>/YYYYMMDD/` 301-redirects to `/<sport>/YYYY-MM-DD/` and
+  `/inplay-odds/live-now/<sport>/` to `/inplay-odds/?sport=<sport>` — old URLs
+  still work via redirect.
+- **Data regressions**: `match_info` (eventData.staticInfo) has no DOM
+  equivalent and is always None; venue trio only survives on matches whose
+  JSON-LD date matches (in practice: the next upcoming meeting).
+
+### Detection signal
+
+Sudden across-the-board "Found 0 event rows" / empty markets with valid pages
+loading in a real browser, while `[data-testid='game-row']` counts are non-zero
+where the old selector finds nothing. Distinguish from anti-bot (§6): a block
+zeroes *both* selector generations.
+
+### Community and in-play specifics (resolved 2026-08-24, same rework)
+
+- **Community moved**: `/predictions/` is 404; Top Predictions live at
+  `/community/predictions/#sport/<sport>/` with the same testids except that
+  `betting-tip-header` cells now sit *inside* each `game-row`, and
+  `participant-name` is a data-testid (no longer a class). Wait for
+  `sport-country-league-item`, not a bare `game-row` — other widgets render
+  game-rows earlier and parse as skippable rows.
+- **Match votes**: `window.pageVar.predictionData.communityData` (absolute
+  counts, all markets) is gone. Votes surface only as the "User Predictions"
+  percentage row (`user-predictions-row` > `prediction-container`) of the
+  hydrated market view, labeled by the `betting-tip-header` cells.
+- **User profiles** (`/profile/<name>/`): the header and the statistics table
+  (a real `<table>`, header line `stats-table-header-line` as a `<tr>`) render
+  on load; the predictions list moved behind the **Feed** tab
+  (`navigation-inactive-tab`, click-only) whose AJAX
+  (`/proxy/ajax-communityFeed/profile/<id>/<timestamp>/`) is cache-busted and
+  therefore not HAR-replayable — the one residual replay hole.
+- **In-play match views** (`/…/inplay-odds/#<id>`): they hydrate on their own
+  (no full-form hash nudge — forcing `#<id>:1X2;2` can flip the view to
+  Pre-match Odds) and use their *own* hash market codes (`O/U`, not
+  `over-under`), so market switching is click-first there. There is no
+  `live-info`: the live score is the red digits (`text-red*`) flanking the
+  names in `game-participants`, and the page shows no period/clock
+  (`live_period` is now always None). The default bookies filter is
+  Classic Bookies, which hides the crypto bookmakers that carry most live
+  odds for a French IP — "All Bookies" is what makes live odds appear.
+
+**Reference:** issue #85; branch `fix/oddsportal-redesign-85`.
+
+---
+
+## §20 — The data-testid attributes are gone; anchor on hrefs, semantics and text shape
+
+**Severity:** Critical — every command returned zero data (issue #86), with two
+symptoms and one cause.
+
+Some time between 2026-08-24 and 2026-09-01, OddsPortal stripped **every**
+`data-testid` from the DOM. `document.querySelectorAll('[data-testid]').length`
+is 0 on listings, match pages, community pages and profiles. The layout of
+§19 is otherwise unchanged, so the fix is a re-anchoring, not another rework.
+
+### Symptoms
+
+- Match pages: "Match view hydration attempt N/3 timed out", then
+  `H2HFragmentResolutionError`, 0/N matches scraped.
+- Listings: "Found 0 event rows", so `historic`/`upcoming` return nothing.
+- Community: "No top-predictions rows rendered", empty profile records.
+- Unit and HAR-replay tests stay green throughout: the fixtures hold the old
+  DOM, which is exactly why the break was invisible until a user reported it.
+
+### What replaces what (all verified live 2026-09-02)
+
+| Gone | Anchor now |
+|---|---|
+| `[data-testid='game-row']` | the row **is** the match link, `a[href*="/h2h/"]`; its two direct `<div>` children are the kickoff/status cell and the participants |
+| `[data-testid='date-header']` | a leaf element whose whole text is the group date; require the day number so the "Today" nav filter is not read as a header |
+| `[data-testid='time-item']` / `game-status-box` | the row's first column: `HH:MM` while pending, a status or period marker once started ("Finished", "5S") |
+| `[data-testid='game-time-item']` | the header's date cell, found by its weekday / date / time paragraphs; the title row is the header's first block, the date row its last |
+| `[data-testid='game-host'/'game-guest']` | the title block's first and last blocks, each naming its side in an `a`/`p` with class `truncate` (tennis has no team pages, so never rely on `/team/` links) |
+| `[data-testid='breadcrumbs-line']` | the content root's first `<ul>`; the league is its last anchor |
+| `[data-testid='sports-nav-*-tab']` | `li.tab-item`; the active one carries `font-bold` on its label span |
+| `[data-testid='sub-nav-*-tab']` | plain `button[type=button]`; the selected one carries an inline `font-weight: 700` |
+| `[data-testid='outrights-expanded-bookmaker-name']` | the `<p>` inside `a[href*="/bookmakers/"]`, else the logo link's `title` (the logo `alt` is a generic "Bookmaker" and must not be used as a name) |
+| `[data-testid='odd-container*']` | `td[class*="event-table-odd-col"]:has(.font-bold)` — the `:has` matters: an expanded submarket row puts the line label ("+2.5") in an odds column too, as a bare span |
+| `[data-testid='live-info']` / `partial-result` | the header's live block, marked by `p.result-live`; it disappears when the match ends |
+| community `betting-tip-header` | the odds table's middle `thead` headers |
+| community row cells | one column per outcome: label header (`bg-gray-light`), odds `p.font-bold`, percentage text, and `.user-pred-pick` on the picked one |
+
+Two structural rules make the rest fall out:
+
+- **Scope to the content root.** The SPA nests the page content in a *second*
+  `<main>`; parsing the whole document lets sidebar widgets (upcoming-match
+  lists, coupons) register as rows, headers or scores.
+- **Peripheral rows left the table.** My coupon / User Predictions / OddsAlert
+  now render as sibling blocks *outside* `<table>`, so bookmaker-row selection
+  no longer needs a skip list — a bookmaker row is simply a leaf `<tr>` holding
+  bookmaker links, and a collapsed line row one holding `img[alt="arrow"]`.
+
+### Two behaviours that flipped back or forward
+
+- **No hash nudge is needed any more**: a match URL renders its match on load,
+  even without a fragment. `_hydrate_match_view` now waits first and only
+  re-routes the hash as a retry. Market and period switching by
+  `#<id>:<market>;<scope>` still work exactly as in §19.
+- **In-play `--league` filtering cannot use the href**: in-play rows link to
+  `/<sport>/h2h/<home>/<away>/inplay-odds/#<id>`, which carries no league
+  segment. The league is only in the section breadcrumb above the row
+  (`_row_league_path`).
+
+### Unrelated live break found alongside
+
+The odds-history modal renders September as **"Sept"**, which `%b` rejects, so
+every September timestamp was dropped. Normalized before parsing.
+
+### Detection signal
+
+Hydration timeouts on match pages *and* "Found 0 event rows" on listings at the
+same time, while the pages render normally in a browser. Distinguish from
+anti-bot (§6): a block also zeroes the structural selectors, and pages come
+back without content at all.
+
+### The durable lesson
+
+Do not let the whole scraper hang off one attribute family a site owner can
+delete in a single commit, and do not treat green fixtures as evidence the
+scraper still works: HAR replay pins the DOM of its capture day. A periodic
+`--live` smoke run is what catches this class of break.
+
+**Reference:** issue #86; branch `fix/oddsportal-testids-removed-86`.
+
+---
+
+## Adding a new gotcha
+
+When a fix lands that exposes an OddsPortal-specific behaviour an agent
+couldn't deduce by reading the code, add it here. Criteria:
+
+- The pattern has appeared **more than once**, OR is likely to recur
+  (sponsor changes, SPA-vs-SSR mismatches, anti-bot tweaks, format
+  variations across geographies).
+- The fix is non-obvious from the code alone: the reader needs to know
+  *why* the defensive check exists, not just that it does.
+- The signal is describable: a future agent must be able to recognize the
+  shape of the problem in new code.
+
+Do **not** add: one-off bugs, fixes whose context is fully captured in the
+commit message, generic Python/Playwright tips, or anything already covered
+in `CLAUDE.md`.

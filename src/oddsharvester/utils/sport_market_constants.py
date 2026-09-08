@@ -12,6 +12,9 @@ class Sport(Enum):
     ICE_HOCKEY = "ice-hockey"
     BASEBALL = "baseball"
     AMERICAN_FOOTBALL = "american-football"
+    HANDBALL = "handball"
+    VOLLEYBALL = "volleyball"
+    CRICKET = "cricket"
 
 
 class FootballMarket(Enum):
@@ -92,6 +95,7 @@ class FootballEuropeanHandicapMarket(Enum):
 class FootballAsianHandicapMarket(Enum):
     """Asian Handicap market values for football (including quarters)."""
 
+    HANDICAP_MINUS_5 = "asian_handicap_-5"
     HANDICAP_MINUS_4 = "asian_handicap_-4"
     HANDICAP_MINUS_3_75 = "asian_handicap_-3_75"
     HANDICAP_MINUS_3_5 = "asian_handicap_-3_5"
@@ -117,6 +121,13 @@ class FootballAsianHandicapMarket(Enum):
     HANDICAP_PLUS_1_5 = "asian_handicap_+1_5"
     HANDICAP_PLUS_1_75 = "asian_handicap_+1_75"
     HANDICAP_PLUS_2 = "asian_handicap_+2"
+
+
+FOOTBALL_UMBRELLA_MARKETS: dict[str, str] = {
+    "over_under": "Over/Under",
+    "asian_handicap": "Asian Handicap",
+}
+"""Umbrella tokens for football that expand to all lines of a market family."""
 
 
 class TennisMarket(Enum):
@@ -834,3 +845,227 @@ class AmericanFootballAsianHandicapMarket(Enum):
     HANDICAP_PLUS_20_5 = "asian_handicap_+20_5"
     HANDICAP_PLUS_21_0 = "asian_handicap_+21_0"
     HANDICAP_PLUS_21_5 = "asian_handicap_+21_5"
+
+
+class HandballMarket(Enum):
+    """Handball-specific markets."""
+
+    ONE_X_TWO = "1x2"
+    HOME_AWAY = "home_away"
+    DOUBLE_CHANCE = "double_chance"
+    DNB = "dnb"
+
+
+class HandballOverUnderMarket(Enum):
+    """Over/Under total goals betting markets for handball."""
+
+    OVER_UNDER_40_5 = "over_under_40_5"
+    OVER_UNDER_41_5 = "over_under_41_5"
+    OVER_UNDER_42_5 = "over_under_42_5"
+    OVER_UNDER_43_5 = "over_under_43_5"
+    OVER_UNDER_44_5 = "over_under_44_5"
+    OVER_UNDER_45_5 = "over_under_45_5"
+    OVER_UNDER_46_5 = "over_under_46_5"
+    OVER_UNDER_47_5 = "over_under_47_5"
+    OVER_UNDER_48_5 = "over_under_48_5"
+    OVER_UNDER_49_5 = "over_under_49_5"
+    OVER_UNDER_50_5 = "over_under_50_5"
+    OVER_UNDER_51_5 = "over_under_51_5"
+    OVER_UNDER_52_5 = "over_under_52_5"
+    OVER_UNDER_53_5 = "over_under_53_5"
+    OVER_UNDER_54_5 = "over_under_54_5"
+    OVER_UNDER_55_5 = "over_under_55_5"
+    OVER_UNDER_56_5 = "over_under_56_5"
+    OVER_UNDER_57_5 = "over_under_57_5"
+    OVER_UNDER_58_5 = "over_under_58_5"
+    OVER_UNDER_59_5 = "over_under_59_5"
+    OVER_UNDER_60_5 = "over_under_60_5"
+    OVER_UNDER_61_5 = "over_under_61_5"
+    OVER_UNDER_62_5 = "over_under_62_5"
+    OVER_UNDER_63_5 = "over_under_63_5"
+    OVER_UNDER_64_5 = "over_under_64_5"
+    OVER_UNDER_65_5 = "over_under_65_5"
+    OVER_UNDER_66_5 = "over_under_66_5"
+    OVER_UNDER_67_5 = "over_under_67_5"
+    OVER_UNDER_68_5 = "over_under_68_5"
+    OVER_UNDER_69_5 = "over_under_69_5"
+    OVER_UNDER_70_5 = "over_under_70_5"
+
+
+class HandballAsianHandicapMarket(Enum):
+    """Asian Handicap (goals) betting markets for handball."""
+
+    HANDICAP_MINUS_9_5 = "handicap_-9_5"
+    HANDICAP_MINUS_8_5 = "handicap_-8_5"
+    HANDICAP_MINUS_7_5 = "handicap_-7_5"
+    HANDICAP_MINUS_6_5 = "handicap_-6_5"
+    HANDICAP_MINUS_5_5 = "handicap_-5_5"
+    HANDICAP_MINUS_4_5 = "handicap_-4_5"
+    HANDICAP_MINUS_3_5 = "handicap_-3_5"
+    HANDICAP_MINUS_2_5 = "handicap_-2_5"
+    HANDICAP_MINUS_1_5 = "handicap_-1_5"
+    HANDICAP_MINUS_0_5 = "handicap_-0_5"
+    HANDICAP_PLUS_0_5 = "handicap_+0_5"
+    HANDICAP_PLUS_1_5 = "handicap_+1_5"
+    HANDICAP_PLUS_2_5 = "handicap_+2_5"
+    HANDICAP_PLUS_3_5 = "handicap_+3_5"
+    HANDICAP_PLUS_4_5 = "handicap_+4_5"
+    HANDICAP_PLUS_5_5 = "handicap_+5_5"
+    HANDICAP_PLUS_6_5 = "handicap_+6_5"
+    HANDICAP_PLUS_7_5 = "handicap_+7_5"
+    HANDICAP_PLUS_8_5 = "handicap_+8_5"
+    HANDICAP_PLUS_9_5 = "handicap_+9_5"
+
+
+class VolleyballMarket(Enum):
+    """Volleyball-specific markets (no draw outcome)."""
+
+    HOME_AWAY = "home_away"
+
+
+class VolleyballOverUnderSetsMarket(Enum):
+    """Over/Under total sets betting markets for volleyball (best-of-5)."""
+
+    OVER_UNDER_2_5 = "over_under_sets_2_5"
+    OVER_UNDER_3_5 = "over_under_sets_3_5"
+    OVER_UNDER_4_5 = "over_under_sets_4_5"
+
+
+class VolleyballOverUnderPointsMarket(Enum):
+    """Over/Under total points betting markets for volleyball.
+
+    Band 150.5-230.5 covers the lines observed live (OddsPortal, May 2026);
+    lines outside this range for unusually high/low-scoring matches are
+    silently dropped. Widen here if such a gap is reported.
+    """
+
+    OVER_UNDER_150_5 = "over_under_points_150_5"
+    OVER_UNDER_151_5 = "over_under_points_151_5"
+    OVER_UNDER_152_5 = "over_under_points_152_5"
+    OVER_UNDER_153_5 = "over_under_points_153_5"
+    OVER_UNDER_154_5 = "over_under_points_154_5"
+    OVER_UNDER_155_5 = "over_under_points_155_5"
+    OVER_UNDER_156_5 = "over_under_points_156_5"
+    OVER_UNDER_157_5 = "over_under_points_157_5"
+    OVER_UNDER_158_5 = "over_under_points_158_5"
+    OVER_UNDER_159_5 = "over_under_points_159_5"
+    OVER_UNDER_160_5 = "over_under_points_160_5"
+    OVER_UNDER_161_5 = "over_under_points_161_5"
+    OVER_UNDER_162_5 = "over_under_points_162_5"
+    OVER_UNDER_163_5 = "over_under_points_163_5"
+    OVER_UNDER_164_5 = "over_under_points_164_5"
+    OVER_UNDER_165_5 = "over_under_points_165_5"
+    OVER_UNDER_166_5 = "over_under_points_166_5"
+    OVER_UNDER_167_5 = "over_under_points_167_5"
+    OVER_UNDER_168_5 = "over_under_points_168_5"
+    OVER_UNDER_169_5 = "over_under_points_169_5"
+    OVER_UNDER_170_5 = "over_under_points_170_5"
+    OVER_UNDER_171_5 = "over_under_points_171_5"
+    OVER_UNDER_172_5 = "over_under_points_172_5"
+    OVER_UNDER_173_5 = "over_under_points_173_5"
+    OVER_UNDER_174_5 = "over_under_points_174_5"
+    OVER_UNDER_175_5 = "over_under_points_175_5"
+    OVER_UNDER_176_5 = "over_under_points_176_5"
+    OVER_UNDER_177_5 = "over_under_points_177_5"
+    OVER_UNDER_178_5 = "over_under_points_178_5"
+    OVER_UNDER_179_5 = "over_under_points_179_5"
+    OVER_UNDER_180_5 = "over_under_points_180_5"
+    OVER_UNDER_181_5 = "over_under_points_181_5"
+    OVER_UNDER_182_5 = "over_under_points_182_5"
+    OVER_UNDER_183_5 = "over_under_points_183_5"
+    OVER_UNDER_184_5 = "over_under_points_184_5"
+    OVER_UNDER_185_5 = "over_under_points_185_5"
+    OVER_UNDER_186_5 = "over_under_points_186_5"
+    OVER_UNDER_187_5 = "over_under_points_187_5"
+    OVER_UNDER_188_5 = "over_under_points_188_5"
+    OVER_UNDER_189_5 = "over_under_points_189_5"
+    OVER_UNDER_190_5 = "over_under_points_190_5"
+    OVER_UNDER_191_5 = "over_under_points_191_5"
+    OVER_UNDER_192_5 = "over_under_points_192_5"
+    OVER_UNDER_193_5 = "over_under_points_193_5"
+    OVER_UNDER_194_5 = "over_under_points_194_5"
+    OVER_UNDER_195_5 = "over_under_points_195_5"
+    OVER_UNDER_196_5 = "over_under_points_196_5"
+    OVER_UNDER_197_5 = "over_under_points_197_5"
+    OVER_UNDER_198_5 = "over_under_points_198_5"
+    OVER_UNDER_199_5 = "over_under_points_199_5"
+    OVER_UNDER_200_5 = "over_under_points_200_5"
+    OVER_UNDER_201_5 = "over_under_points_201_5"
+    OVER_UNDER_202_5 = "over_under_points_202_5"
+    OVER_UNDER_203_5 = "over_under_points_203_5"
+    OVER_UNDER_204_5 = "over_under_points_204_5"
+    OVER_UNDER_205_5 = "over_under_points_205_5"
+    OVER_UNDER_206_5 = "over_under_points_206_5"
+    OVER_UNDER_207_5 = "over_under_points_207_5"
+    OVER_UNDER_208_5 = "over_under_points_208_5"
+    OVER_UNDER_209_5 = "over_under_points_209_5"
+    OVER_UNDER_210_5 = "over_under_points_210_5"
+    OVER_UNDER_211_5 = "over_under_points_211_5"
+    OVER_UNDER_212_5 = "over_under_points_212_5"
+    OVER_UNDER_213_5 = "over_under_points_213_5"
+    OVER_UNDER_214_5 = "over_under_points_214_5"
+    OVER_UNDER_215_5 = "over_under_points_215_5"
+    OVER_UNDER_216_5 = "over_under_points_216_5"
+    OVER_UNDER_217_5 = "over_under_points_217_5"
+    OVER_UNDER_218_5 = "over_under_points_218_5"
+    OVER_UNDER_219_5 = "over_under_points_219_5"
+    OVER_UNDER_220_5 = "over_under_points_220_5"
+    OVER_UNDER_221_5 = "over_under_points_221_5"
+    OVER_UNDER_222_5 = "over_under_points_222_5"
+    OVER_UNDER_223_5 = "over_under_points_223_5"
+    OVER_UNDER_224_5 = "over_under_points_224_5"
+    OVER_UNDER_225_5 = "over_under_points_225_5"
+    OVER_UNDER_226_5 = "over_under_points_226_5"
+    OVER_UNDER_227_5 = "over_under_points_227_5"
+    OVER_UNDER_228_5 = "over_under_points_228_5"
+    OVER_UNDER_229_5 = "over_under_points_229_5"
+    OVER_UNDER_230_5 = "over_under_points_230_5"
+
+
+class VolleyballAsianHandicapSetsMarket(Enum):
+    """Asian Handicap (sets) betting markets for volleyball."""
+
+    HANDICAP_MINUS_2_5 = "asian_handicap_-2_5_sets"
+    HANDICAP_MINUS_1_5 = "asian_handicap_-1_5_sets"
+    HANDICAP_PLUS_1_5 = "asian_handicap_+1_5_sets"
+    HANDICAP_PLUS_2_5 = "asian_handicap_+2_5_sets"
+
+
+class VolleyballAsianHandicapPointsMarket(Enum):
+    """Asian Handicap (points) betting markets for volleyball."""
+
+    HANDICAP_PLUS_1_5 = "asian_handicap_+1_5_points"
+    HANDICAP_PLUS_2_5 = "asian_handicap_+2_5_points"
+    HANDICAP_PLUS_3_5 = "asian_handicap_+3_5_points"
+    HANDICAP_PLUS_4_5 = "asian_handicap_+4_5_points"
+    HANDICAP_PLUS_5_5 = "asian_handicap_+5_5_points"
+    HANDICAP_PLUS_6_5 = "asian_handicap_+6_5_points"
+    HANDICAP_PLUS_7_5 = "asian_handicap_+7_5_points"
+    HANDICAP_PLUS_8_5 = "asian_handicap_+8_5_points"
+    HANDICAP_PLUS_9_5 = "asian_handicap_+9_5_points"
+    HANDICAP_MINUS_1_5 = "asian_handicap_-1_5_points"
+    HANDICAP_MINUS_2_5 = "asian_handicap_-2_5_points"
+    HANDICAP_MINUS_3_5 = "asian_handicap_-3_5_points"
+    HANDICAP_MINUS_4_5 = "asian_handicap_-4_5_points"
+    HANDICAP_MINUS_5_5 = "asian_handicap_-5_5_points"
+    HANDICAP_MINUS_6_5 = "asian_handicap_-6_5_points"
+    HANDICAP_MINUS_7_5 = "asian_handicap_-7_5_points"
+    HANDICAP_MINUS_8_5 = "asian_handicap_-8_5_points"
+    HANDICAP_MINUS_9_5 = "asian_handicap_-9_5_points"
+
+
+class VolleyballCorrectScoreMarket(Enum):
+    """Correct Score (set score) markets for volleyball (best-of-5)."""
+
+    CORRECT_SCORE_3_0 = "correct_score_3_0"
+    CORRECT_SCORE_3_1 = "correct_score_3_1"
+    CORRECT_SCORE_3_2 = "correct_score_3_2"
+    CORRECT_SCORE_0_3 = "correct_score_0_3"
+    CORRECT_SCORE_1_3 = "correct_score_1_3"
+    CORRECT_SCORE_2_3 = "correct_score_2_3"
+
+
+class CricketMarket(Enum):
+    """Cricket-specific markets (limited-overs match winner, 2-way, no draw)."""
+
+    HOME_AWAY = "home_away"

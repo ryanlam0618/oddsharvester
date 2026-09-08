@@ -75,69 +75,67 @@ class OddsHistoryExtractor:
         modals_data = []
 
         try:
-            rows = await page.query_selector_all(OddsPortalSelectors.BOOKMAKER_ROW_CSS)
+            # Find all bookmaker rows (redesign: one <tr> per bookmaker)
+            rows = await page.query_selector_all(OddsPortalSelectors.BOOKMAKER_ROW_WITH_NAME_CSS)
 
             for row in rows:
                 try:
-                    logo_img = await row.query_selector(OddsPortalSelectors.BOOKMAKER_LOGO_CSS)
+                    title = await self._row_bookmaker_name(row)
 
-                    if logo_img:
-                        title = await logo_img.get_attribute("title")
+                    if title and bookmaker_name.lower() in title.lower():
+                        self.logger.info(f"Found matching bookmaker row: {title}")
+                        odds_blocks = await row.query_selector_all(OddsPortalSelectors.ODD_CELL_CSS)
 
-                        if title and bookmaker_name.lower() in title.lower():
-                            self.logger.info(f"Found matching bookmaker row: {title}")
-                            odds_blocks = await row.query_selector_all(OddsPortalSelectors.ODDS_BLOCK_CSS)
-
-                            for odds in odds_blocks:
+                        for odds in odds_blocks:
+                            # Fork's robust hover: clear overlays first, then scroll+hover,
+                            # falling back to JS-dispatched mouse events on failure.
+                            try:
+                                await self._clear_bookie_overlay(page)
+                                await odds.scroll_into_view_if_needed()
+                                await odds.hover(timeout=5000)
+                            except Exception as hover_error:
+                                self.logger.warning(
+                                    f"Hover failed for bookmaker '{bookmaker_name}', retrying after overlay cleanup: {hover_error}"
+                                )
+                                await self._clear_bookie_overlay(page)
                                 try:
-                                    await self._clear_bookie_overlay(page)
-                                    await odds.scroll_into_view_if_needed()
-                                    await odds.hover(timeout=5000)
-                                except Exception as hover_error:
+                                    await page.evaluate(
+                                        """
+                                        (el) => {
+                                            el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+                                            el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
+                                        }
+                                        """,
+                                        odds,
+                                    )
+                                except Exception as js_hover_error:
                                     self.logger.warning(
-                                        f"Hover failed for bookmaker '{bookmaker_name}', retrying after overlay cleanup: {hover_error}"
-                                    )
-                                    await self._clear_bookie_overlay(page)
-                                    try:
-                                        await page.evaluate(
-                                            """
-                                            (el) => {
-                                                el.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
-                                                el.dispatchEvent(new MouseEvent('mouseenter', { bubbles: true }));
-                                            }
-                                            """,
-                                            odds,
-                                        )
-                                    except Exception as js_hover_error:
-                                        self.logger.warning(
-                                            f"JS hover fallback failed for bookmaker '{bookmaker_name}': {js_hover_error}"
-                                        )
-                                        continue
-
-                                await page.wait_for_timeout(ODDS_HISTORY_HOVER_WAIT_MS)
-
-                                try:
-                                    odds_movement_element = await page.wait_for_selector(
-                                        OddsPortalSelectors.ODDS_MOVEMENT_HEADER,
-                                        timeout=ODDS_MOVEMENT_SELECTOR_TIMEOUT_MS,
-                                    )
-                                except Exception:
-                                    self.logger.debug(
-                                        f"Odds movement modal not found for bookmaker '{bookmaker_name}' on this odds block."
+                                        f"JS hover fallback failed for bookmaker '{bookmaker_name}': {js_hover_error}"
                                     )
                                     continue
 
-                                modal_wrapper = await odds_movement_element.evaluate_handle("node => node.parentElement")
-                                modal_element = modal_wrapper.as_element()
+                            await page.wait_for_timeout(ODDS_HISTORY_HOVER_WAIT_MS)
 
-                                if modal_element:
-                                    html = await modal_element.inner_html()
-                                    modals_data.append(html)
-                                    await self._clear_bookie_overlay(page)
-                                else:
-                                    self.logger.warning(
-                                        "Unable to retrieve odds' evolution modal: modal_element is None"
-                                    )
+                            try:
+                                odds_movement_element = await page.wait_for_selector(
+                                    OddsPortalSelectors.ODDS_MOVEMENT_HEADER,
+                                    timeout=ODDS_MOVEMENT_SELECTOR_TIMEOUT_MS,
+                                )
+                            except Exception:
+                                self.logger.debug(
+                                    f"Odds movement modal not found for bookmaker '{bookmaker_name}' on this odds block."
+                                )
+                                continue
+
+                            modal_wrapper = await odds_movement_element.evaluate_handle("node => node.parentElement")
+                            modal_element = modal_wrapper.as_element()
+
+                            if modal_element:
+                                html = await modal_element.inner_html()
+                                modals_data.append(html)
+                                await self._clear_bookie_overlay(page)
+                            else:
+                                self.logger.warning("Unable to retrieve odds' evolution modal: modal_element is None")
 
                 except Exception as e:
                     self.logger.warning(f"Failed to process a bookmaker row: {e}")
@@ -145,3 +143,14 @@ class OddsHistoryExtractor:
             self.logger.warning(f"Failed to extract odds history for bookmaker {bookmaker_name}: {e}")
 
         return modals_data
+
+    @staticmethod
+    async def _row_bookmaker_name(row) -> str:
+        """Bookmaker name of an odds row: its visible label, else the logo link title."""
+        name_el = await row.query_selector(f"{OddsPortalSelectors.BOOKMAKER_LINK_CSS} p")
+        if name_el:
+            name = ((await name_el.text_content()) or "").strip()
+            if name:
+                return name
+        titled = await row.query_selector("a[title]")
+        return ((await titled.get_attribute("title")) or "").strip() if titled else ""

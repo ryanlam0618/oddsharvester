@@ -1,27 +1,45 @@
 import asyncio
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from enum import Enum
 import json
 import logging
 import random
 import re
-from typing import Any
+from typing import Any, ClassVar
+from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from bs4 import BeautifulSoup
 from playwright.async_api import Page, TimeoutError
 
-from oddsharvester.core.browser_helper import BrowserHelper
+from oddsharvester.core.browser.cookies import CookieDismisser
+from oddsharvester.core.browser.pagination import PaginationWalker
+from oddsharvester.core.browser.scrolling import PageScroller
+from oddsharvester.core.browser.selection import (
+    BOOKIES_FILTER_STRATEGY,
+    SelectionManager,
+)
+from oddsharvester.core.exceptions import H2HFragmentResolutionError
 from oddsharvester.core.odds_portal_market_extractor import OddsPortalMarketExtractor
 from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
 from oddsharvester.core.playwright_manager import PlaywrightManager
-from oddsharvester.core.retry import RetryConfig, classify_error, is_retryable_error, retry_with_backoff
+from oddsharvester.core.retry import (
+    RetryConfig,
+    classify_error,
+    is_proxy_attributable_error,
+    is_retryable_error,
+    retry_with_backoff,
+)
 from oddsharvester.core.scrape_result import FailedUrl, ScrapeResult, ScrapeStats
+from oddsharvester.core.url_builder import URLBuilder
 from oddsharvester.storage.storage_manager import store_data
 from oddsharvester.utils.bookies_filter_enum import BookiesFilter
 from oddsharvester.utils.constants import (
     DEFAULT_REQUEST_DELAY_S,
     DYNAMIC_CONTENT_WAIT_MS,
+    HASH_NUDGE_DELAY_MS,
+    MATCH_HYDRATION_ATTEMPTS,
+    MATCH_HYDRATION_TIMEOUT_MS,
     MATCH_RETRY_BASE_DELAY,
     MATCH_RETRY_MAX_ATTEMPTS,
     MATCH_RETRY_MAX_DELAY,
@@ -30,10 +48,10 @@ from oddsharvester.utils.constants import (
     ODDS_FORMAT_WAIT_MS,
     ODDSPORTAL_BASE_URL,
     REQUEST_DELAY_JITTER_FACTOR,
-    SELECTOR_TIMEOUT_MS,
 )
+from oddsharvester.utils.datetime_format import format_utc
+from oddsharvester.utils.local_kickoff import compute_local_kickoff
 from oddsharvester.utils.odds_format_enum import OddsFormat
-from oddsharvester.utils.utils import clean_html_text
 
 _MONTH_ABBREV_TO_NUM = {
     "jan": 1,
@@ -67,7 +85,7 @@ def _parse_date_header(header_text: str, tz_name: str | None = None, season_year
     since OddsPortal resolves them based on the browser timezone.
 
     Args:
-        header_text: Raw inner text of the [data-testid='date-header'] element.
+        header_text: Raw text of the listing's date-header element.
         tz_name: IANA timezone name used to resolve "Today"/"Tomorrow" and to
             infer missing years. Defaults to UTC.
         season_year: Calendar year to assume for 2-part headers like "14 Apr".
@@ -87,9 +105,9 @@ def _parse_date_header(header_text: str, tz_name: str | None = None, season_year
         text = text.split(" - ", 1)[0].strip()
 
     try:
-        tz = ZoneInfo(tz_name) if tz_name else ZoneInfo("UTC")
+        tz = ZoneInfo(tz_name) if tz_name else UTC
     except (ZoneInfoNotFoundError, ValueError):
-        tz = ZoneInfo("UTC")
+        tz = UTC
 
     now_date = datetime.now(tz).date()
 
@@ -146,6 +164,175 @@ def _parse_date_header(header_text: str, tz_name: str | None = None, season_year
     return None
 
 
+_OFFSCREEN_STYLE_MARKERS = (
+    "left:-9999px",
+    "top:-9999px",
+    "display:none",
+    "visibility:hidden",
+)
+
+
+def _is_offscreen_row(row) -> bool:
+    """OddsPortal sometimes ships duplicate event rows in the DOM: a real
+    visible one and a CSS-hidden twin whose href points to a corrupted slug
+    that 301-redirects to an unrelated match. Skip the hidden twin."""
+    style = (row.get("style") or "").lower().replace(" ", "")
+    return any(marker in style for marker in _OFFSCREEN_STYLE_MARKERS)
+
+
+_KICKOFF_TIME_RE = re.compile(r"^\d{1,2}:\d{2}$")
+
+
+def _row_status_cell_text(row) -> str:
+    """Text of a listing row's first column: kickoff time, or a status/period marker.
+
+    A row is the match <a>, whose two direct <div> children are the
+    kickoff/status cell and the participants (gotchas §20).
+    """
+    cell = row.find("div", recursive=False)
+    return cell.get_text(" ", strip=True) if cell else ""
+
+
+def _row_has_started(row) -> bool:
+    """Return True if a listing-page event row is live or finished.
+
+    The first column shows HH:MM while the match is pending and a status or
+    period marker once it starts ("Finished", "5S"). See
+    `docs/agentic-gotchas.md` §9. Fail-safe: no marker → False so DOM drift
+    degrades open.
+    """
+    text = _row_status_cell_text(row)
+    if not text:
+        return False
+    return not _KICKOFF_TIME_RE.match(text)
+
+
+def _row_kickoff_datetime(row, row_date: date | None, tz) -> datetime | None:
+    """Best-effort kickoff datetime for a listing-page event row.
+
+    Combines the group's `row_date` (from the surrounding date-header) with the
+    HH:MM shown in the row's first column. Returns None when the kickoff cannot
+    be determined (no date, or a non-clock value such as a live period marker),
+    so callers keep the row (fail-safe against DOM drift).
+
+    Args:
+        row: A BeautifulSoup event-row node.
+        row_date: The date of the row's group, or None if unknown.
+        tz: tzinfo used to build the aware datetime; must match the timezone the
+            listing times are rendered in (see `docs/agentic-gotchas.md` §10).
+    """
+    if row_date is None:
+        return None
+    text = _row_status_cell_text(row)
+    if not text or not _KICKOFF_TIME_RE.match(text):
+        return None
+    hour_str, minute_str = text.split(":")
+    try:
+        kickoff_time = time(int(hour_str), int(minute_str))
+    except ValueError:
+        return None
+    return datetime.combine(row_date, kickoff_time, tzinfo=tz)
+
+
+def _is_league_link(el) -> bool:
+    """True for a section-header league link ('/<sport>/<country>/<league>/')."""
+    href = el.get("href") or ""
+    return "?" not in href and "/h2h/" not in href and len(href.strip("/").split("/")) == 3
+
+
+# Separator is a colon on the live header, but OddsPortal renders scores with an
+# en-dash (U+2013) elsewhere; accept both rather than silently dropping the score.
+_LIVE_MAIN_SCORE_RE = re.compile(r"^(\d+)\s*[:\u2013-]\s*(\d+)$")
+
+
+# A finished match keeps its live-info container and swaps the period marker for a
+# terminal state, so an absent container is not the only end-of-match signal.
+# "Final result" verified live 2026-07-20; the rest mirror the listing-page states
+# in docs/agentic-gotchas.md §9.
+_LIVE_ENDED_PERIOD_MARKERS = frozenset(
+    {
+        "final result",
+        "finished",
+        "postponed",
+        "canceled",
+        "cancelled",
+        "abandoned",
+        "retired",
+        "walkover",
+    }
+)
+
+
+_LIVE_PARTIAL_RESULT_RE = re.compile(r"^\(.+\)$")
+
+
+def _parse_live_info(soup: BeautifulSoup) -> dict[str, Any] | None:
+    """Parse the in-play match header into live context fields.
+
+    The live block sits in the header's date row, marked by the `result-live`
+    pulse: a period chunk, a main-score chunk, and an optional partial result in
+    parentheses. Match on text shape, not classes.
+
+    Returns None when the match is not live, which covers two cases: the block
+    is absent, or it carries a terminal marker such as "Final result".
+    """
+    marker = OddsPortalSelectors.content_root(soup).select_one(OddsPortalSelectors.LIVE_INFO_MARKER)
+    container = marker.parent if marker is not None else None
+    if container is None:
+        return None
+
+    partial_text = None
+    partial_el = next(
+        (el for el in container.find_all("div") if _LIVE_PARTIAL_RESULT_RE.match(el.get_text("", strip=True))), None
+    )
+    if partial_el is not None:
+        partial_text = partial_el.get_text("", strip=True).strip("()") or None
+        partial_el.extract()
+
+    period = None
+    score_raw = None
+    score_home = None
+    score_away = None
+    for raw_chunk in container.stripped_strings:
+        # OddsPortal separates words with non-breaking spaces in these chunks.
+        chunk = raw_chunk.replace("\u00a0", " ").strip()
+        match = _LIVE_MAIN_SCORE_RE.match(chunk)
+        if match and score_raw is None:
+            score_raw = chunk
+            score_home, score_away = int(match.group(1)), int(match.group(2))
+        elif period is None and not match:
+            period = chunk
+
+    # Prefix match: the redesigned page can serve the terminal text as a single
+    # chunk ("Final result 1:2 (0:1, 1:1)"), not a standalone marker element.
+    if period and any(period.casefold().startswith(marker) for marker in _LIVE_ENDED_PERIOD_MARKERS):
+        return None
+
+    live_score_raw = score_raw
+    if score_raw and partial_text:
+        live_score_raw = f"{score_raw} ({partial_text})"
+
+    return {
+        "live_period": period,
+        "live_score_home": score_home,
+        "live_score_away": score_away,
+        "live_score_raw": live_score_raw,
+    }
+
+
+def _extract_fragment_match_id(match_link: str) -> str | None:
+    """
+    Extract the URL fragment as a match id from a match link.
+
+    OddsPortal H2H pages encode the requested historic match via the URL
+    fragment, e.g. `.../h2h/<home>/<away>/#<match_id>`. Returns the fragment
+    string if it looks like a match id (non-empty, no slash). Returns None
+    when no fragment is present, the fragment is empty, or it contains a
+    slash (which would indicate it isn't a bare match id).
+    """
+    return OddsPortalSelectors.event_id_from_url(match_link)
+
+
 class BaseScraper:
     """
     Base class for scraping match data from OddsPortal.
@@ -154,23 +341,43 @@ class BaseScraper:
     def __init__(
         self,
         playwright_manager: PlaywrightManager,
-        browser_helper: BrowserHelper,
         market_extractor: OddsPortalMarketExtractor,
+        scroller: PageScroller,
+        cookie_dismisser: CookieDismisser,
+        selection_manager: SelectionManager,
         preview_submarkets_only: bool = False,
+        local_kickoff: bool = False,
+        base_url: str | None = None,
+        browser_helper=None,
     ):
         """
         Args:
             playwright_manager (PlaywrightManager): Handles Playwright lifecycle.
-            browser_helper (BrowserHelper): Helper class for browser interactions.
             market_extractor (OddsPortalMarketExtractor): Handles market scraping.
-            preview_submarkets_only (bool): If True, only scrape average odds from visible submarkets without loading
-            individual bookmaker details.
+            scroller (PageScroller): Handles incremental page scrolling.
+            cookie_dismisser (CookieDismisser): Handles cookie banner dismissal.
+            selection_manager (SelectionManager): Manages bookies filter and period selection.
+            preview_submarkets_only (bool): If True, only scrape the collapsed submarket odds (best/highest shown
+            per line, not per-bookmaker) from visible submarkets without loading individual bookmaker details.
+            local_kickoff (bool): If True, add venue_timezone and match_date_venue_local (kickoff converted to
+            the venue's local time) to each record. match_date stays UTC.
+            base_url (str | None): Regional OddsPortal domain override (scheme+host). When None, the canonical
+            https://www.oddsportal.com is used.
         """
         self.logger = logging.getLogger(self.__class__.__name__)
         self.playwright_manager = playwright_manager
-        self.browser_helper = browser_helper
         self.market_extractor = market_extractor
+        self.scroller = scroller
+        self.cookie_dismisser = cookie_dismisser
+        self.selection_manager = selection_manager
         self.preview_submarkets_only = preview_submarkets_only
+        self.local_kickoff = local_kickoff
+        self.base_url = base_url
+        # Fork anti-detection helper (consent cookies, overlay dismissal, human
+        # simulation). Optional so upstream-style constructions still work.
+        self.browser_helper = browser_helper
+        self._warmed_proxy_keys: set[str] = set()
+        self.pagination_walker = PaginationWalker()
 
     async def _find_odds_format_dropdown_button(self, page: Page):
         selectors = [
@@ -236,31 +443,25 @@ class BaseScraper:
         """
         try:
             self.logger.info(f"Setting odds format: {odds_format.value}")
+            # Text-based selector: OddsPortal's React build periodically reshuffles
+            # Tailwind utility classes on this control (issue #68: the old
+            # `div.group > button.gap-2` stopped matching when it became
+            # `button.flex gap-3`). The button label is always the current odds
+            # format ("Decimal Odds", "Fractional Odds", ...), so matching on the
+            # "Odds" text survives class refactors. Verified live 2026-05-15.
+            button_selector = "button:has-text('Odds')"
+            await page.wait_for_selector(button_selector, state="attached", timeout=ODDS_FORMAT_SELECTOR_TIMEOUT_MS)
+            dropdown_button = await page.query_selector(button_selector)
 
-            current_format = await self._detect_current_odds_format(page)
-            if current_format == odds_format.value:
-                self.logger.info(f"Odds format is already set to '{odds_format.value}'. Skipping.")
-                return
+            if dropdown_button is None:
+                # Fork fallback: structural selector chain when the text-based
+                # selector no longer resolves.
+                dropdown_button, button_selector = await self._find_odds_format_dropdown_button(page)
+                if dropdown_button is None:
+                    raise RuntimeError("Odds format dropdown button not found via known selectors.")
 
-            try:
-                await page.wait_for_selector("div.group", state="attached", timeout=ODDS_FORMAT_SELECTOR_TIMEOUT_MS)
-            except TimeoutError:
-                self.logger.warning("Odds format container 'div.group' did not appear before timeout; trying fallback detection.")
-
-            dropdown_button, button_selector = await self._find_odds_format_dropdown_button(page)
-            if dropdown_button is None or button_selector is None:
-                current_format = await self._detect_current_odds_format(page)
-                if current_format == odds_format.value:
-                    self.logger.info(
-                        f"Odds format control not found, but page already appears to be '{odds_format.value}'. Skipping."
-                    )
-                    return
-
-                msg = "Odds format dropdown button not found via known selectors."
-                self.logger.error(msg)
-                raise RuntimeError(msg)
-
-            current_format = (await dropdown_button.inner_text()).strip()
+            # Check if the desired format is already selected
+            current_format = await dropdown_button.inner_text()
             self.logger.info(f"Current odds format detected: {current_format}")
 
             if current_format == odds_format.value:
@@ -272,16 +473,8 @@ class BaseScraper:
             format_option_selector = "div.group > div.dropdown-content > ul > li > a"
             format_options = await page.query_selector_all(format_option_selector)
 
-            if not format_options:
-                current_format = await self._detect_current_odds_format(page)
-                if current_format == odds_format.value:
-                    self.logger.info(
-                        f"Dropdown options not rendered, but current page already appears to be '{odds_format.value}'. Skipping."
-                    )
-                    return
-
             for option in format_options:
-                option_text = (await option.inner_text()).strip()
+                option_text = await option.inner_text()
 
                 if odds_format.value.lower() in option_text.lower():
                     self.logger.info(f"Selecting odds format: {option_text}")
@@ -290,34 +483,30 @@ class BaseScraper:
                     self.logger.info(f"Odds format changed to '{odds_format.value}'.")
                     return
 
-            msg = f"Desired odds format '{odds_format.value}' not found in dropdown options."
-            self.logger.warning(msg)
-            raise RuntimeError(msg)
+            self.logger.warning(f"Desired odds format '{odds_format.value}' not found in dropdown options.")
 
         except TimeoutError:
-            self.logger.error(
-                "Timeout while setting odds format. Dropdown may not have loaded.",
-                exc_info=True,
-            )
-            raise
+            self.logger.error("Timeout while setting odds format. Dropdown may not have loaded.")
 
         except Exception as e:
             self.logger.error(f"Error while setting odds format: {e}", exc_info=True)
-            raise
 
-    async def extract_match_links(
+    async def extract_match_rows(
         self,
         page: Page,
         date_filter: date | None = None,
+        skip_started: bool = False,
+        kickoff_within_hours: float | None = None,
+        collect_kickoff: bool = False,
         season_year: int | None = None,
         season_end_year: int | None = None,
-    ) -> list[str]:
+    ) -> list[dict[str, Any]]:
         """
-        Extract and parse match links from the current page.
+        Extract and parse match rows from the current page.
 
-        Event rows on OddsPortal listing pages are grouped by date: the first
-        row of a group carries a `[data-testid='date-header']` element, and
-        subsequent rows in the same group inherit that date. When `date_filter`
+        Event rows on OddsPortal listing pages are grouped by date: a group is
+        introduced by a date-header element and the rows that follow it inherit
+        that date. When `date_filter`
         is provided, rows are iterated in document order, the "current" date
         header is tracked, and only rows whose group matches the filter are
         kept. When `season_year` and `season_end_year` are provided, rows are
@@ -326,7 +515,18 @@ class BaseScraper:
         Args:
             page (Page): A Playwright Page instance for this task.
             date_filter (Optional[date]): If provided, keep only match links
-                whose surrounding date-header matches this date.
+                whose surrounding date-header matches this date. Rows under a
+                date-header that cannot be parsed are kept (fail-safe).
+            skip_started (bool): If True, drop rows that are live or finished
+                (see `_row_has_started` for detection). Fail-safe on DOM drift.
+            kickoff_within_hours (Optional[float]): If provided, keep only rows
+                whose kickoff is at most this many hours ahead of now. Rows whose
+                kickoff cannot be computed are kept (fail-safe). Combines the
+                row's date-header with its HH:MM in the browser timezone (issue
+                #77); pair with skip_started to bound the window on both sides.
+            collect_kickoff (bool): If True, resolve each row's kickoff and emit
+                it as `kickoff_utc`. Off by default because it forces date-header
+                tracking, which the historic pagination path does not need.
             season_year (Optional[int]): Start year of the season (e.g. 2016 for
                 "2016-2017"). Used to correctly parse 2-part date headers.
             season_end_year (Optional[int]): End year of the season (e.g. 2017
@@ -334,94 +534,272 @@ class BaseScraper:
                 rows outside the Aug(year)–May(end_year) range.
 
         Returns:
-            List[str]: A list of unique match links found on the page.
+            List[dict]: One entry per unique match link, each carrying
+                `match_link` and `kickoff_utc` (None when undeterminable).
         """
         try:
             html_content = await page.content()
             soup = BeautifulSoup(html_content, "lxml")
-            event_rows = soup.find_all(class_=re.compile(OddsPortalSelectors.EVENT_ROW_CLASS_PATTERN))
-            self.logger.info(f"Found {len(event_rows)} event rows.")
+            # Rows are the match <a> elements and date headers are leaf elements
+            # holding the group date; both are walked in document order, scoped to
+            # the content root so sidebar widgets never register as rows/headers.
+            root = OddsPortalSelectors.content_root(soup)
+            elements = [
+                el
+                for el in root.find_all(["a", "div", "span", "p"])
+                if OddsPortalSelectors.is_match_link(el) or OddsPortalSelectors.is_date_header(el)
+            ]
+            row_count = sum(1 for el in elements if OddsPortalSelectors.is_match_link(el))
+            self.logger.info(f"Found {row_count} event rows.")
 
-            use_date_filter = date_filter is not None or season_year is not None
-            tz_name = getattr(self.playwright_manager, "timezone_id", None) if use_date_filter else None
+            need_kickoff = kickoff_within_hours is not None or collect_kickoff
+            track_headers = date_filter is not None or need_kickoff or season_year is not None
+            tz_name = getattr(self.playwright_manager, "timezone_id", None) if track_headers else None
+            ref_tz = self._resolved_browser_timezone() if need_kickoff else None
+
+            window_cutoff: datetime | None = None
+            if kickoff_within_hours is not None:
+                window_cutoff = datetime.now(ref_tz) + timedelta(hours=kickoff_within_hours)
 
             seen: set[str] = set()
-            match_links: list[str] = []
+            rows_out: list[dict[str, Any]] = []
             current_row_date: date | None = None
+            seen_header_dates: set[date] = set()
             filtered_out_count = 0
             unparseable_header_count = 0
+            offscreen_skipped_count = 0
+            started_filtered_out_count = 0
+            window_filtered_out_count = 0
 
-            for row in event_rows:
-                if use_date_filter:
-                    header_el = row.find(attrs={"data-testid": "date-header"})
-                    if header_el is not None:
-                        header_text = header_el.get_text(" ", strip=True)
+            for el in elements:
+                if not OddsPortalSelectors.is_match_link(el):
+                    if track_headers:
+                        header_text = el.get_text(" ", strip=True)
                         parsed = _parse_date_header(header_text, tz_name=tz_name, season_year=season_year)
                         if parsed is None:
                             unparseable_header_count += 1
                             self.logger.warning(
                                 f"Could not parse date-header '{header_text}'; rows under it will not be filtered."
                             )
+                        else:
+                            seen_header_dates.add(parsed)
                         current_row_date = parsed
+                    continue
 
-                    if current_row_date is not None:
-                        if date_filter is not None and current_row_date != date_filter:
-                            filtered_out_count += 1
-                            continue
-                        if season_year is not None and season_end_year is not None:
-                            season_start = date(season_year, 8, 1)
-                            season_end = date(season_end_year, 5, 31)
-                            if not (season_start <= current_row_date <= season_end):
-                                filtered_out_count += 1
-                                continue
+                row = el
+                if _is_offscreen_row(row):
+                    offscreen_skipped_count += 1
+                    continue
 
-                for link in row.find_all("a", href=True):
-                    href = link["href"].strip()
-                    if not href.startswith("/"):
+                if date_filter is not None and current_row_date is not None and current_row_date != date_filter:
+                    filtered_out_count += 1
+                    continue
+
+                # Season-range filter (fork): drop rows outside Aug(start)-May(end).
+                if (
+                    season_year is not None
+                    and season_end_year is not None
+                    and current_row_date is not None
+                ):
+                    season_start = date(season_year, 8, 1)
+                    season_end = date(season_end_year, 5, 31)
+                    if not (season_start <= current_row_date <= season_end):
+                        filtered_out_count += 1
                         continue
 
-                    href_lower = href.lower()
-                    if any(
-                        blocked in href_lower
-                        for blocked in (
-                            "/results/",
-                            "/standings/",
-                            "/outrights/",
-                            "/draw/",
-                            "/compare-odds/",
-                        )
-                    ):
-                        continue
+                if skip_started and _row_has_started(row):
+                    started_filtered_out_count += 1
+                    continue
 
-                    parts = [p for p in href.strip("/").split("/") if p]
-                    if len(parts) < 4:
-                        continue
+                kickoff_dt = _row_kickoff_datetime(row, current_row_date, ref_tz) if need_kickoff else None
 
-                    full_url = f"{ODDSPORTAL_BASE_URL}{href}"
-                    if full_url not in seen:
-                        seen.add(full_url)
-                        match_links.append(full_url)
+                if window_cutoff is not None and kickoff_dt is not None and kickoff_dt > window_cutoff:
+                    window_filtered_out_count += 1
+                    continue
 
+                kickoff_utc = format_utc(kickoff_dt) if collect_kickoff and kickoff_dt is not None else None
+
+                href = row["href"]
+                if len(href.strip("/").split("/")) <= 3:
+                    continue
+                full_url = f"{self.base_url or ODDSPORTAL_BASE_URL}{href}"
+                if full_url not in seen:
+                    seen.add(full_url)
+                    rows_out.append({"match_link": full_url, "kickoff_utc": kickoff_utc})
+
+            started_suffix = f", {started_filtered_out_count} started/finished rows skipped" if skip_started else ""
+            window_suffix = (
+                f", {window_filtered_out_count} rows outside the {kickoff_within_hours}h kickoff window"
+                if kickoff_within_hours is not None
+                else ""
+            )
             if date_filter is not None:
                 self.logger.info(
-                    f"Extracted {len(match_links)} unique match links after date filtering "
+                    f"Extracted {len(rows_out)} unique match links after date filtering "
                     f"(filter={date_filter.isoformat()}, filtered out {filtered_out_count} rows, "
-                    f"{unparseable_header_count} unparseable headers)."
+                    f"{unparseable_header_count} unparseable headers, "
+                    f"{offscreen_skipped_count} offscreen rows skipped"
+                    f"{started_suffix}{window_suffix})."
                 )
+                if not rows_out and filtered_out_count:
+                    headers_label = ", ".join(d.isoformat() for d in sorted(seen_header_dates)) or "none"
+                    self.logger.warning(
+                        f"Date filter {date_filter.isoformat()} matched 0 matches although "
+                        f"{filtered_out_count} rows were present under other dates. Date headers "
+                        f"on the page (grouped in browser timezone '{tz_name or 'UTC'}'): {headers_label}. "
+                        f"If the expected matches kick off late and land on an adjacent calendar day, "
+                        f"pass --timezone to align the listing with the competition's region."
+                    )
             elif season_year is not None and season_end_year is not None:
                 self.logger.info(
-                    f"Extracted {len(match_links)} unique match links after season filtering "
+                    f"Extracted {len(rows_out)} unique match links after season filtering "
                     f"({season_year}-{season_end_year}, filtered out {filtered_out_count} rows, "
                     f"{unparseable_header_count} unparseable headers)."
                 )
             else:
-                self.logger.info(f"Extracted {len(match_links)} unique match links.")
+                self.logger.info(
+                    f"Extracted {len(rows_out)} unique match links "
+                    f"({offscreen_skipped_count} offscreen rows skipped"
+                    f"{started_suffix}{window_suffix})."
+                )
 
-            return match_links
+            return rows_out
 
         except Exception as e:
             self.logger.error(f"Error extracting match links: {e}", exc_info=True)
             return []
+
+    async def extract_match_links(
+        self,
+        page: Page,
+        date_filter: date | None = None,
+        skip_started: bool = False,
+        kickoff_within_hours: float | None = None,
+        season_year: int | None = None,
+        season_end_year: int | None = None,
+    ) -> list[str]:
+        """Collect match links from a listing page.
+
+        Thin wrapper over `extract_match_rows` for callers that need only URLs.
+        """
+        rows = await self.extract_match_rows(
+            page=page,
+            date_filter=date_filter,
+            skip_started=skip_started,
+            kickoff_within_hours=kickoff_within_hours,
+            season_year=season_year,
+            season_end_year=season_end_year,
+        )
+        return [row["match_link"] for row in rows]
+
+    async def extract_live_match_links(
+        self,
+        page: Page,
+        sport: str | None = None,
+        league: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """
+        Extract match links and listing context from a live-now in-play listing.
+
+        Rows are the match <a> elements, whose hrefs here carry the
+        `/inplay-odds/#<id>` suffix. The same match can appear twice in the DOM,
+        so rows are deduped on href.
+
+        Args:
+            page (Page): A Playwright Page instance for this task.
+            sport (Optional[str]): Sport slug, required when `league` is given.
+            league (Optional[str]): League slug; keeps only rows whose href sits
+                under the league URL path from SPORTS_LEAGUES_URLS_MAPPING.
+
+        Returns:
+            List[dict]: One dict per live match: {"match_link": str, "live_period": str | None}.
+        """
+        try:
+            league_path_prefix = None
+            if league and sport:
+                league_url = URLBuilder.get_league_url(sport, league)
+                league_path_prefix = urlsplit(league_url).path.rstrip("/")
+
+            html_content = await page.content()
+            soup = BeautifulSoup(html_content, "lxml")
+            root = OddsPortalSelectors.content_root(soup)
+            # In-play hrefs are H2H URLs carrying no league segment, so the league
+            # of a row is the section-header link that precedes it (gotchas §20);
+            # both are walked in document order.
+            elements = [
+                el
+                for el in root.find_all("a", href=True)
+                if (OddsPortalSelectors.is_match_link(el) and "/inplay-odds/" in el["href"]) or _is_league_link(el)
+            ]
+
+            seen: set[str] = set()
+            results: list[dict[str, Any]] = []
+            offscreen_skipped = 0
+            league_filtered_out = 0
+            current_league: str | None = None
+
+            for row in elements:
+                if not OddsPortalSelectors.is_match_link(row):
+                    current_league = row["href"]
+                    continue
+
+                if _is_offscreen_row(row):
+                    offscreen_skipped += 1
+                    continue
+
+                href = row["href"]
+                if href in seen:
+                    continue
+                seen.add(href)
+
+                if league_path_prefix and (current_league or "").rstrip("/") != league_path_prefix:
+                    league_filtered_out += 1
+                    continue
+
+                period = _row_status_cell_text(row) or None
+
+                results.append(
+                    {
+                        "match_link": f"{self.base_url or ODDSPORTAL_BASE_URL}{href}",
+                        "live_period": period,
+                    }
+                )
+
+            league_suffix = f", {league_filtered_out} rows outside league '{league}'" if league_path_prefix else ""
+            self.logger.info(
+                f"Extracted {len(results)} live match links "
+                f"({offscreen_skipped} offscreen rows skipped{league_suffix})."
+            )
+            return results
+
+        except Exception as e:
+            self.logger.error(f"Error extracting live match links: {e}", exc_info=True)
+            return []
+
+    async def _warm_proxy_contexts(self):
+        """Warm each non-default proxy context once.
+
+        Odds format and cookie consent are per-context state. Without this, match
+        pages loaded on a fresh proxy context would render with the wrong odds
+        format, silently corrupting odds values.
+        """
+        for key in self.playwright_manager.non_default_context_keys():
+            if key in self._warmed_proxy_keys:
+                continue
+            self._warmed_proxy_keys.add(key)
+            page = None
+            try:
+                page = await self.playwright_manager.new_page_on_key(key)
+                await page.goto(ODDSPORTAL_BASE_URL, timeout=NAVIGATION_TIMEOUT_MS, wait_until="domcontentloaded")
+                await self.cookie_dismisser.dismiss(page=page)
+                await self.set_odds_format(page=page)
+                self.logger.info(f"Warmed proxy context: {key}")
+            except Exception as e:
+                self.logger.warning(f"Failed to warm proxy context {key}: {e}. Removing proxy from rotation.")
+                self.playwright_manager.blacklist_proxy(key)
+            finally:
+                if page:
+                    await page.close()
 
     async def extract_match_odds(
         self,
@@ -441,6 +819,7 @@ class BaseScraper:
         checkpoint_storage_format: str = "json",
         season_year: int | None = None,
         season_end_year: int | None = None,
+        live_mode: bool = False,
     ) -> ScrapeResult:
         """
         Extract odds for a list of match links concurrently.
@@ -452,8 +831,8 @@ class BaseScraper:
             scrape_odds_history (bool): Whether to scrape and attach odds history.
             target_bookmaker (str): If set, only scrape odds for this bookmaker.
             concurrent_scraping_task (int): Controls how many pages are processed simultaneously.
-            preview_submarkets_only (bool): If True, only scrape average odds from visible submarkets without loading
-            individual bookmaker details.
+            preview_submarkets_only (bool): If True, only scrape the collapsed submarket odds (best/highest shown
+            per line, not per-bookmaker) from visible submarkets without loading individual bookmaker details.
             bookies_filter (BookiesFilter): The bookmaker filter to apply.
             period: The period to scrape odds for.
             retry_config: Configuration for per-match retry behavior.
@@ -461,6 +840,8 @@ class BaseScraper:
         Returns:
             ScrapeResult: Contains successful results, failed URLs with error details, and statistics.
         """
+        await self._warm_proxy_contexts()
+
         self.logger.info(f"Starting to scrape odds for {len(match_links)} match links...")
 
         # Shuffle match links to avoid sequential access patterns (synced from SofaScore)
@@ -489,6 +870,7 @@ class BaseScraper:
                 preview_submarkets_only=preview_submarkets_only,
                 bookies_filter=bookies_filter,
                 period=period,
+                live_mode=live_mode,
             )
 
         request_counter = {"count": 0}
@@ -525,9 +907,10 @@ class BaseScraper:
                     await asyncio.sleep(total_delay)
 
                 tab = None
+                proxy_key = None
 
                 try:
-                    tab = await self.playwright_manager.context.new_page()
+                    tab, proxy_key = await self.playwright_manager.new_rotated_page()
 
                     # Use retry with backoff for each match
                     retry_result = await retry_with_backoff(
@@ -539,7 +922,6 @@ class BaseScraper:
 
                     if retry_result.success and retry_result.result is not None:
                         self.logger.info(f"Successfully scraped match link: {link} (attempts: {retry_result.attempts})")
-
                         # Post-scrape season validation: check if match_date is within expected season range
                         if season_year is not None and season_end_year is not None:
                             match_date_str = retry_result.result.get("match_date", "")
@@ -561,6 +943,7 @@ class BaseScraper:
                                     )
 
                         if retry_result.result is not None:
+                            self.playwright_manager.report_page_result(proxy_key, is_proxy_failure=False)
                             await save_checkpoint(retry_result.result)
                             return (link, retry_result.result, None)
                         else:
@@ -584,10 +967,13 @@ class BaseScraper:
                             error_type=error_type,
                             error_message=retry_result.last_error or "Unknown error",
                             attempts=retry_result.attempts,
-                            is_retryable=is_retryable_error(retry_result.last_error or ""),
+                            is_retryable=retry_result.is_retryable,
                         )
                         self.logger.warning(
                             f"Failed to scrape {link} after {retry_result.attempts} attempts: {retry_result.last_error}"
+                        )
+                        self.playwright_manager.report_page_result(
+                            proxy_key, is_proxy_failure=is_proxy_attributable_error(error_type)
                         )
                         return (link, None, failed_url)
 
@@ -602,6 +988,11 @@ class BaseScraper:
                         is_retryable=is_retryable_error(error_message),
                     )
                     self.logger.error(f"Unexpected error scraping {link}: {e}")
+                    if proxy_key is not None:
+                        self.playwright_manager.report_page_result(
+                            proxy_key,
+                            is_proxy_failure=is_proxy_attributable_error(classify_error(error_message)),
+                        )
                     return (link, None, failed_url)
 
                 finally:
@@ -651,6 +1042,7 @@ class BaseScraper:
         preview_submarkets_only: bool = False,
         bookies_filter: BookiesFilter = BookiesFilter.ALL,
         period: Enum | None = None,
+        live_mode: bool = False,
     ) -> dict[str, Any] | None:
         """
         Scrape data for a specific match based on the desired markets.
@@ -662,8 +1054,8 @@ class BaseScraper:
             markets (Optional[List[str]]): A list of markets to scrape (e.g., ['1x2', 'over_under_2_5']).
             scrape_odds_history (bool): Whether to scrape and attach odds history.
             target_bookmaker (str): If set, only scrape odds for this bookmaker.
-            preview_submarkets_only (bool): If True, only scrape average odds from visible submarkets without loading
-            individual bookmaker details.
+            preview_submarkets_only (bool): If True, only scrape the collapsed submarket odds (best/highest shown
+            per line, not per-bookmaker) from visible submarkets without loading individual bookmaker details.
             bookies_filter (BookiesFilter): The bookmaker filter to apply.
             period: The period enum to scrape odds for (FootballPeriod, TennisPeriod, or BasketballPeriod).
 
@@ -672,26 +1064,48 @@ class BaseScraper:
         """
         self.logger.info(f"Scraping match: {match_link}")
 
+        # Block OneTrust scripts before navigation to prevent bot detection (fork anti-detection).
+        await self.playwright_manager.block_one_trust_for_page(page)
+
+        # Navigation is the proxy-sensitive step: let its failures propagate so
+        # retry/backoff and multi-proxy failover can attribute them to the proxy.
+        # Errors after a successful load are content/DOM issues and must not
+        # blacklist a proxy, so they are swallowed to None below except
+        # H2HFragmentResolutionError, which is deliberately re-raised.
+        await page.goto(match_link, timeout=NAVIGATION_TIMEOUT_MS, wait_until="domcontentloaded")
+
         try:
-            # Block OneTrust scripts before navigation to prevent bot detection
-            await self.playwright_manager.block_one_trust_for_page(page)
-
-            # Navigate to the match page with extended timeout
-            await page.goto(match_link, timeout=NAVIGATION_TIMEOUT_MS, wait_until="domcontentloaded")
-
             # Wait a bit for dynamic content to load
             await page.wait_for_timeout(DYNAMIC_CONTENT_WAIT_MS)
 
-            # Apply bookmaker filter before extracting odds
-            await self.browser_helper.ensure_bookies_filter_selected(page=page, desired_filter=bookies_filter)
+            await self._dismiss_login_modal(page)
+            await self._hydrate_match_view(page, match_link, sport=sport)
 
-            match_details = await self._extract_match_details_event_header(page, match_link)
+            # Apply bookmaker filter before extracting odds
+            await self.selection_manager.ensure_selected(
+                page=page,
+                target_value=bookies_filter.value,
+                display_label=BookiesFilter.get_display_label(bookies_filter),
+                strategy=BOOKIES_FILTER_STRATEGY,
+            )
+
+            match_details = await self._extract_match_details(page, match_link)
 
             if not match_details:
                 self.logger.warning(
                     f"No match details found for {match_link} - page may be unavailable or structure changed"
                 )
                 return None
+
+            if live_mode:
+                live_info = _parse_live_info(BeautifulSoup(await page.content(), "lxml"))
+                if live_info is None:
+                    # No live-info header: the match ended (or lost live coverage)
+                    # between listing and visit. Not a scraping failure.
+                    self.logger.info(f"No live-info header on {match_link}; match no longer live, skipping.")
+                    return {"_live_ended": True, "match_link": match_link}
+                match_details.update(live_info)
+                match_details["scraped_at_utc"] = datetime.now(UTC).isoformat(timespec="seconds").replace("+00:00", "Z")
 
             if markets:
                 self.logger.info(f"Scraping markets: {markets}")
@@ -718,78 +1132,321 @@ class BaseScraper:
 
             return match_details
 
+        except H2HFragmentResolutionError:
+            raise
         except Exception as e:
             self.logger.error(f"Error scraping match data from {match_link}: {e}")
             return None
 
-    async def _extract_match_details_event_header(self, page: Page, match_link: str) -> dict[str, Any] | None:
+    def _resolved_browser_timezone(self) -> ZoneInfo:
         """
-        Extract match details such as date, teams, and scores from the react event header.
+        Resolve the timezone the Playwright browser context is rendering in.
 
-        Args:
-            page (Page): A Playwright Page instance for this task.
-            match_link (str): The link to the match page.
+        Falls back to UTC when no timezone is configured or when an unknown
+        timezone identifier is set. Emits a warning on fallback.
+        """
+        tz_id = getattr(self.playwright_manager, "timezone_id", None) or "UTC"
+        try:
+            return ZoneInfo(tz_id)
+        except (ZoneInfoNotFoundError, ValueError):
+            self.logger.warning(f"Unknown timezone '{tz_id}', falling back to UTC for DOM date parsing")
+            return UTC
 
-        Returns:
-            Optional[Dict[str, Any]]: A dictionary containing match details, or None if header is not found.
+    def _parse_match_date_from_dom(self, soup: BeautifulSoup) -> str | None:
+        """
+        Extract the match date from the header's date cell and return it
+        formatted as "YYYY-MM-DD HH:MM:SS UTC".
+
+        Returns None if the cell or its child paragraphs are missing, or if
+        the text doesn't match the expected "DD MMM YYYY" + "HH:MM" shape.
         """
         try:
-            # Wait for the react event header to be loaded
-            try:
-                await page.wait_for_selector("#react-event-header", timeout=SELECTOR_TIMEOUT_MS)
-            except Exception:
-                # If we can't find the selector, try to get the content anyway
-                self.logger.warning("React event header selector not found, attempting to parse existing content")
+            game_time_div = OddsPortalSelectors.match_date_cell(soup)
+            if not game_time_div:
+                return None
 
+            paragraphs = game_time_div.find_all("p")
+            if len(paragraphs) < 3:
+                return None
+
+            date_part = paragraphs[1].get_text(strip=True).rstrip(",")
+            time_part = paragraphs[2].get_text(strip=True)
+            local_dt = datetime.strptime(f"{date_part} {time_part}", "%d %b %Y %H:%M")
+            local_dt = local_dt.replace(tzinfo=self._resolved_browser_timezone())
+            return format_utc(local_dt)
+        except Exception as e:
+            self.logger.warning(f"DOM parse failed for match_date: {e}")
+            return None
+
+    def _parse_teams_from_dom(self, soup: BeautifulSoup) -> tuple[str | None, str | None]:
+        """
+        Extract (home_team, away_team) from the header's participants row: its
+        first and last blocks, each naming its side in a link (team page) or a
+        paragraph (sports with no team pages, e.g. tennis). Returns (None, None)
+        if either side is missing.
+        """
+
+        def _name(container):
+            if container is None:
+                return None
+            el = container.find(["a", "p"])
+            text = el.get_text(strip=True) if el else None
+            return text or None
+
+        try:
+            title = OddsPortalSelectors.match_title_block(soup)
+            if title is None:
+                return None, None
+            sides = title.find_all("div", recursive=False)
+            host_name = _name(sides[0]) if sides else None
+            guest_name = _name(sides[-1]) if len(sides) > 1 else None
+            if not host_name or not guest_name:
+                return None, None
+            return host_name, guest_name
+        except Exception as e:
+            self.logger.warning(f"DOM parse failed for teams: {e}")
+            return None, None
+
+    _SEASON_SUFFIX_RE = re.compile(r"\s+\d{4}/\d{4}$")
+
+    def _parse_league_from_dom(self, soup: BeautifulSoup) -> str | None:
+        """
+        Extract the league name from the breadcrumb navigation, stripping
+        the trailing season suffix when present (e.g. "Premier League 2024/2025"
+        -> "Premier League"). Returns None if the breadcrumb or league link is
+        missing.
+        """
+        try:
+            breadcrumbs = OddsPortalSelectors.content_root(soup).find("ul")
+            if not breadcrumbs:
+                return None
+            # The breadcrumb is Home > Sport > Country > League > <match>; only the
+            # trail is linked, so the league is its last anchor.
+            links = breadcrumbs.find_all("a", href=True)
+            if not links:
+                return None
+            raw = links[-1].get_text(strip=True)
+            return self._SEASON_SUFFIX_RE.sub("", raw) or None
+        except Exception as e:
+            self.logger.warning(f"DOM parse failed for league_name: {e}")
+            return None
+
+    _RESULT_TEXT_RE = re.compile(r"(\d+)\s*:\s*(\d+)(?:\s*\(([\d:,\s ]+)\))?")
+
+    def _parse_results_from_dom(self, soup: BeautifulSoup) -> tuple[str | None, str | None, str | None]:
+        """
+        Extract (home_score, away_score, partial_results) from the page DOM.
+
+        Scoped to the header's date row (the date cell's parent) to avoid false
+        positives elsewhere in the page. Returns (None, None, None) if the score
+        pattern isn't found.
+        """
+        try:
+            game_time_div = OddsPortalSelectors.match_date_cell(soup)
+            if not game_time_div:
+                return None, None, None
+            scope = game_time_div.find_parent() or soup
+            excluded = {id(game_time_div), *(id(d) for d in game_time_div.find_all("div"))}
+            for div in scope.find_all("div"):
+                if id(div) in excluded:
+                    continue
+                text = div.get_text(separator=" ", strip=True)
+                m = self._RESULT_TEXT_RE.search(text)
+                if m:
+                    home, away, partial = m.group(1), m.group(2), m.group(3)
+                    formatted_partial = (
+                        f"({re.sub(r' +', ' ', partial.replace(chr(0xA0), ' ')).strip()})" if partial else None
+                    )
+                    return home, away, formatted_partial
+            return None, None, None
+        except Exception as e:
+            self.logger.warning(f"DOM parse failed for results: {e}")
+            return None, None, None
+
+    async def _dismiss_login_modal(self, page: Page) -> None:
+        """Close the login modal that can block match-page rendering on cold profiles."""
+        try:
+            el = await page.query_selector(OddsPortalSelectors.LOGIN_MODAL_CLOSE)
+            if el and await el.is_visible():
+                await el.click()
+                await page.wait_for_timeout(500)
+                self.logger.info("Dismissed the login modal.")
+        except Exception as e:
+            self.logger.debug(f"Login modal dismissal skipped: {e}")
+
+    # The SPA renders the fragment match on load again since 2026-09, so the hash
+    # nudge is only a retry. Setting the bare id first guarantees the second
+    # assignment is a change even when the page URL already carried the full form.
+    _HASH_NUDGE_JS = """
+    (args) => {
+        if (args.bare) {
+            window.location.hash = '';
+            setTimeout(() => {
+                window.location.hash = '#' + args.fragment;
+                window.dispatchEvent(new HashChangeEvent('hashchange', { newURL: window.location.href }));
+            }, args.delayMs);
+            return;
+        }
+        window.location.hash = '#' + args.fragment;
+        setTimeout(() => {
+            window.location.hash = '#' + args.fragment + ':' + args.code + ';' + args.scope;
+            window.dispatchEvent(new HashChangeEvent('hashchange', { newURL: window.location.href }));
+        }, args.delayMs);
+    }
+    """
+
+    # Hydration needs a market tab that exists for the sport; two-outcome sports
+    # have no 1X2 tab. Adjusted by live validation, not exhaustive.
+    _DEFAULT_MARKET_CODE_BY_SPORT: ClassVar[dict[str, str]] = {
+        "tennis": "home-away",
+        "basketball": "home-away",
+        "baseball": "home-away",
+        "american-football": "home-away",
+        "volleyball": "home-away",
+        "cricket": "home-away",
+    }
+
+    async def _hydrate_match_view(self, page: Page, match_link: str, sport: str | None = None) -> None:
+        """Wait for the SPA to render the match view, nudging the hash if it does not.
+
+        The view renders on load, so each attempt waits for the market tabs and
+        only then re-routes the hash (bare id on in-play pages, which own their
+        market codes; '#<id>:<market>;<scope>' elsewhere). Raises
+        H2HFragmentResolutionError (retryable, proxy-neutral) when the view never
+        renders.
+        """
+        fragment = _extract_fragment_match_id(match_link)
+        inplay = "/inplay-odds/" in match_link
+        code = self._DEFAULT_MARKET_CODE_BY_SPORT.get((sport or "").lower(), "1X2")
+        scope = OddsPortalSelectors.period_scope_code(sport, "FullTime") or 2
+
+        for attempt in range(1, MATCH_HYDRATION_ATTEMPTS + 1):
+            try:
+                await page.wait_for_selector(
+                    OddsPortalSelectors.MATCH_CONTENT_READY_SELECTOR, timeout=MATCH_HYDRATION_TIMEOUT_MS
+                )
+                return
+            except TimeoutError:
+                self.logger.warning(
+                    f"Match view hydration attempt {attempt}/{MATCH_HYDRATION_ATTEMPTS} timed out for {match_link}"
+                )
+                await self._dismiss_login_modal(page)
+                if fragment is None:
+                    # Legacy non-fragment match URL: nothing to re-route to.
+                    break
+                nudge = {"fragment": fragment, "delayMs": HASH_NUDGE_DELAY_MS}
+                nudge.update({"bare": True} if inplay else {"code": code, "scope": scope})
+                await page.evaluate(self._HASH_NUDGE_JS, nudge)
+
+        raise H2HFragmentResolutionError(
+            f"match view hydration failed: {match_link} never rendered match content", url=match_link
+        )
+
+    def _parse_venue_from_ld_json(
+        self, soup: BeautifulSoup, dom_match_date: str | None
+    ) -> tuple[str | None, str | None, str | None]:
+        """Venue trio from the SSR JSON-LD SportsEvent, staleness-guarded.
+
+        The SSR JSON-LD describes the *next upcoming* meeting of the two teams
+        (gotchas §1b), so it is trusted only when its startDate calendar date
+        equals the DOM-extracted match date. Returns (venue, town, country),
+        all None when absent or stale.
+        """
+        if not dom_match_date:
+            return None, None, None
+        try:
+            for script in soup.find_all("script", attrs={"type": "application/ld+json"}):
+                try:
+                    data = json.loads(script.string or "")
+                except (TypeError, json.JSONDecodeError):
+                    continue
+                types = data.get("@type") or []
+                if isinstance(types, str):
+                    types = [types]
+                if "SportsEvent" not in types:
+                    continue
+                try:
+                    ld_date = datetime.fromisoformat(data.get("startDate") or "").astimezone(UTC).date()
+                except ValueError:
+                    continue
+                if ld_date.isoformat() != dom_match_date[:10]:
+                    return None, None, None
+                location = data.get("location") or {}
+                address = location.get("address") or {}
+                if not isinstance(address, dict):
+                    address = {}
+                country = address.get("addressCountry")
+                if isinstance(country, dict):
+                    country = country.get("name")
+                return location.get("name") or None, address.get("addressLocality") or None, country or None
+        except Exception as e:
+            self.logger.debug(f"JSON-LD venue parse failed: {e}")
+        return None, None, None
+
+    async def _extract_match_details(self, page: Page, match_link: str) -> dict[str, Any] | None:
+        """
+        Extract match details (date, teams, league, scores, venue) from the
+        hydrated match page DOM.
+
+        The redesigned page embeds no per-match JSON: content renders only after
+        the SPA fetches the fragment match (see `_hydrate_match_view`), so the
+        DOM *is* the requested match. Venue comes from the SSR JSON-LD only when
+        it describes the same match.
+
+        Returns None when the DOM lacks the minimum landmarks to identify the
+        match (no kickoff and no team pair).
+        """
+        try:
             html_content = await page.content()
             soup = BeautifulSoup(html_content, "html.parser")
-            event_header_div = soup.find("div", id="react-event-header")
 
-            if not event_header_div:
-                self.logger.warning("React event header div not found in page content")
+            match_date = self._parse_match_date_from_dom(soup)
+            home_team, away_team = self._parse_teams_from_dom(soup)
+            league_name = self._parse_league_from_dom(soup)
+            home_score_raw, away_score_raw, partial_results = self._parse_results_from_dom(soup)
+
+            if match_date is None and (home_team is None or away_team is None):
+                self.logger.warning(
+                    f"No match landmarks found for {match_link} - page may be unavailable or structure changed"
+                )
                 return None
 
-            # Check if the div has the 'data' attribute
-            data_attribute = event_header_div.get("data")
-            if not data_attribute:
-                self.logger.warning("React event header div found but 'data' attribute is missing")
-                return None
+            venue, venue_town, venue_country = self._parse_venue_from_ld_json(soup, match_date)
 
-            try:
-                json_data = json.loads(data_attribute)
-            except (TypeError, json.JSONDecodeError) as e:
-                self.logger.error(f"Failed to parse JSON data from react event header: {e}")
-                return None
-
-            event_body = json_data.get("eventBody", {})
-            event_data = json_data.get("eventData", {})
-            unix_timestamp = event_body.get("startDate")
-
-            match_date = (
-                datetime.fromtimestamp(unix_timestamp, tz=UTC).strftime("%Y-%m-%d %H:%M:%S %Z")
-                if unix_timestamp
-                else None
-            )
-
-            return {
-                "scraped_date": datetime.now(UTC).strftime("%Y-%m-%d %H:%M:%S %Z"),
+            details = {
+                "scraped_date": format_utc(datetime.now(UTC)),
                 "match_date": match_date,
+                "season": None,
                 "match_link": match_link,
-                "home_team": event_data.get("home"),
-                "away_team": event_data.get("away"),
-                "league_name": event_data.get("tournamentName"),
-                "home_score": event_body.get("homeResult"),
-                "away_score": event_body.get("awayResult"),
-                "partial_results": clean_html_text(event_body.get("partialresult")),
-                "venue": event_body.get("venue").encode("ascii", "ignore").decode("ascii")
-                if event_body.get("venue")
-                else None,
-                "venue_town": event_body.get("venueTown").encode("ascii", "ignore").decode("ascii")
-                if event_body.get("venueTown")
-                else None,
-                "venue_country": event_body.get("venueCountry"),
+                "home_team": home_team,
+                "away_team": away_team,
+                "league_name": league_name,
+                "home_score": str(home_score_raw) if home_score_raw is not None else None,
+                "away_score": str(away_score_raw) if away_score_raw is not None else None,
+                "partial_results": partial_results,
+                "venue": venue.encode("ascii", "ignore").decode("ascii") if venue else None,
+                "venue_town": venue_town.encode("ascii", "ignore").decode("ascii") if venue_town else None,
+                "venue_country": venue_country,
+                "match_info": None,
             }
 
+            if self.local_kickoff:
+                venue_timezone, match_date_venue_local = compute_local_kickoff(
+                    match_date_utc=details["match_date"],
+                    country=details["venue_country"],
+                    town=details["venue_town"],
+                )
+                details["venue_timezone"] = venue_timezone
+                details["match_date_venue_local"] = match_date_venue_local
+
+                if venue_timezone is None and details["venue_country"]:
+                    self.logger.debug(
+                        f"Unresolved venue timezone for country={details['venue_country']!r} "
+                        f"town={details['venue_town']!r}; match_date_venue_local left null"
+                    )
+
+            return details
+
         except Exception as e:
-            self.logger.error(f"Error extracting match details while parsing React event header: {e}")
+            self.logger.error(f"Error extracting match details from the DOM: {e}")
             return None

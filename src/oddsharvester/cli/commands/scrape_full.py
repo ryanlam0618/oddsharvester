@@ -9,7 +9,11 @@ import sys
 import click
 
 from oddsharvester.cli.options import common_options
-from oddsharvester.cli.validators import validate_max_pages, validate_season
+from oddsharvester.cli.validators import validate_max_pages, validate_seasons
+from oddsharvester.core.browser.cookies import CookieDismisser
+from oddsharvester.core.browser.market_navigation import MarketTabNavigator
+from oddsharvester.core.browser.scrolling import PageScroller
+from oddsharvester.core.browser.selection import SelectionManager
 from oddsharvester.core.browser_helper import BrowserHelper
 from oddsharvester.core.full_odds_extractor import FullOddsExtractor
 from oddsharvester.core.odds_portal_market_extractor import OddsPortalMarketExtractor
@@ -18,7 +22,7 @@ from oddsharvester.core.playwright_manager import PlaywrightManager
 from oddsharvester.core.sport_market_registry import SportMarketRegistrar
 from oddsharvester.core.url_builder import URLBuilder
 from oddsharvester.storage.storage_manager import store_data
-from oddsharvester.utils.constants import DEFAULT_REQUEST_DELAY_S, GOTO_TIMEOUT_MS, ODDSPORTAL_BASE_URL
+from oddsharvester.utils.constants import ODDSPORTAL_BASE_URL
 from oddsharvester.utils.sport_market_constants import Sport
 
 logger = logging.getLogger(__name__)
@@ -37,9 +41,9 @@ def load_cookies_from_file(cookies_path: str) -> list | None:
     if not os.path.exists(cookies_path):
         logger.warning(f"Cookies file not found: {cookies_path}")
         return None
-    
+
     try:
-        with open(cookies_path, 'r') as f:
+        with open(cookies_path) as f:
             cookies = json.load(f)
         logger.info(f"Loaded {len(cookies)} cookies from {cookies_path}")
         return cookies
@@ -53,7 +57,7 @@ def load_cookies_from_file(cookies_path: str) -> list | None:
 @click.option(
     "--season",
     required=True,
-    callback=validate_season,
+    callback=validate_seasons,
     help="Season to scrape (YYYY, YYYY-YYYY, or 'current').",
 )
 @click.option(
@@ -126,16 +130,18 @@ def scrape_full(ctx, **kwargs):
     # Normalize sport enum to string
     sport_value = kwargs["sport"]
     sport_str = sport_value.value if isinstance(sport_value, Sport) else sport_value
-    
+
     storage = kwargs["storage"]
     storage_format = kwargs["storage_format"]
     league = kwargs["leagues"][0] if kwargs.get("leagues") else None
-    season = kwargs.get("season")
+    seasons = kwargs.get("season")
+    # validate_seasons returns a list; scrape-full operates on one season.
+    season = seasons[0] if isinstance(seasons, list) else seasons
     max_pages = kwargs.get("max_pages")
     max_matches = kwargs.get("max_matches")
     delay = kwargs.get("delay", 2.0)
     save_every = kwargs.get("save_every", 50)
-    
+
     include_markets = []
     if kwargs.get("include_1x2"):
         include_markets.append("1x2")
@@ -143,35 +149,46 @@ def scrape_full(ctx, **kwargs):
         include_markets.append("over_under")
     if kwargs.get("include_ah"):
         include_markets.append("asian_handicap")
-    
+
     if not include_markets:
         click.echo("Error: At least one market must be enabled (--include-1x2, --include-ou, --include-ah)", err=True)
         sys.exit(1)
-    
+
     logger.info(f"Starting full odds scraping: {sport_str} - {league} - {season}")
     logger.info(f"Markets: {include_markets}")
     logger.info(f"Max matches: {max_matches or 'all'}")
     logger.info(f"Delay between matches: {delay}s")
-    
+
     try:
         # Initialize components
         SportMarketRegistrar.register_all_markets()
         playwright_manager = PlaywrightManager()
         browser_helper = BrowserHelper()
-        market_extractor = OddsPortalMarketExtractor(browser_helper=browser_helper)
-        
+        cookie_dismisser = CookieDismisser()
+        selection_manager = SelectionManager()
+        tab_navigator = MarketTabNavigator()
+        scroller = PageScroller()
+        market_extractor = OddsPortalMarketExtractor(
+            scroller=scroller,
+            tab_navigator=tab_navigator,
+            selection_manager=selection_manager,
+        )
+
         scraper = OddsPortalScraper(
             playwright_manager=playwright_manager,
-            browser_helper=browser_helper,
             market_extractor=market_extractor,
+            scroller=scroller,
+            cookie_dismisser=cookie_dismisser,
+            selection_manager=selection_manager,
             preview_submarkets_only=kwargs.get("preview_submarkets_only", False),
+            browser_helper=browser_helper,
         )
-        
+
         async def run_full_scrape():
             try:
                 # Start Playwright
                 await scraper.start_playwright(headless=not kwargs.get("headless", False))
-                
+
                 # Load cookies if provided
                 cookies_path = kwargs.get("cookies")
                 if cookies_path and os.path.exists(cookies_path):
@@ -184,29 +201,29 @@ def scrape_full(ctx, **kwargs):
                             logger.info(f"Added {len(cookies)} cookies to browser context")
                         except Exception as e:
                             logger.warning(f"Could not add cookies: {e}")
-                        
+
                         # Visit OddsPortal to activate cookies
                         logger.info("Activating cookies by visiting OddsPortal...")
                         await page.goto(ODDSPORTAL_BASE_URL, timeout=30000)
                         await page.wait_for_timeout(2000)
-                
+
                 # Create extractor
                 extractor = FullOddsExtractor(scraper)
-                
+
                 # Phase 1: Extract match data from results pages (fast)
                 logger.info("Phase 1: Extracting match data from results pages...")
-                
+
                 base_url = URLBuilder.get_historic_matches_url(sport=sport_str, league=league, season=season)
-                
+
                 page = scraper.playwright_manager.page
                 await page.goto(base_url, timeout=60000, wait_until="domcontentloaded")
                 await page.wait_for_timeout(2000)
-                
+
                 pages_to_scrape = await scraper._get_pagination_info(page=page, max_pages=max_pages)
-                
+
                 season_year = int(season.split("-")[0]) if season and "-" in season else None
                 season_end_year = int(season.split("-")[1]) if season and "-" in season else None
-                
+
                 result = await scraper._extract_matches_from_results_page(
                     base_url=base_url,
                     pages_to_scrape=pages_to_scrape,
@@ -214,48 +231,48 @@ def scrape_full(ctx, **kwargs):
                     season_end_year=season_end_year,
                     sport=sport_str,
                 )
-                
+
                 matches = result.matches
                 logger.info(f"Phase 1 complete: extracted {len(matches)} matches from {len(pages_to_scrape)} pages")
-                
+
                 if not matches:
                     logger.error("No matches found!")
                     return None
-                
+
                 # Phase 2: Enrich with full odds (slow but complete)
                 if include_markets:
                     logger.info("Phase 2: Enriching matches with full odds...")
-                    
+
                     enriched_matches = []
                     processed = 0
                     total = min(len(matches), max_matches) if max_matches else len(matches)
-                    
+
                     for match in matches[:max_matches] if max_matches else matches:
                         try:
                             processed += 1
                             logger.info(f"Processing match {processed}/{total}: {match.get('home_team', '?')} vs {match.get('away_team', '?')}")
-                            
+
                             h2h_url = match.get("h2h_url") or match.get("match_link")
                             if not h2h_url:
-                                logger.warning(f"Match has no h2h_url, skipping")
+                                logger.warning("Match has no h2h_url, skipping")
                                 enriched_matches.append(match)
                                 continue
-                            
+
                             # Extract full odds
                             odds = await extractor.extract_full_odds_from_h2h(h2h_url)
-                            
+
                             # Add odds to match data
                             enriched_match = match.copy()
-                            
+
                             if "1x2" in include_markets and odds.get("1X2"):
                                 enriched_match["odds"] = odds["1X2"]
                             if "over_under" in include_markets and odds.get("over_under"):
                                 enriched_match["over_under"] = odds["over_under"]
                             if "asian_handicap" in include_markets and odds.get("asian_handicap"):
                                 enriched_match["asian_handicap"] = odds["asian_handicap"]
-                            
+
                             enriched_matches.append(enriched_match)
-                            
+
                             # Save checkpoint periodically
                             if processed % save_every == 0:
                                 checkpoint_file = f"checkpoint_{processed}.json"
@@ -266,46 +283,46 @@ def scrape_full(ctx, **kwargs):
                                     file_path=checkpoint_file,
                                 )
                                 logger.info(f"Saved checkpoint: {checkpoint_file}")
-                            
+
                             # Delay to avoid rate limiting
                             if processed < total:
                                 await asyncio.sleep(delay)
-                                
+
                         except Exception as e:
                             logger.error(f"Error processing match: {e}")
                             enriched_matches.append(match.copy())
-                    
+
                     matches = enriched_matches
                     logger.info(f"Phase 2 complete: enriched {len(matches)} matches")
-                
+
                 return matches
-                
+
             finally:
                 await scraper.stop_playwright()
-        
+
         # Run the async scraping
         scraped_data = asyncio.run(run_full_scrape())
-        
+
         if scraped_data:
             # Save results
             file_path = kwargs.get("file_path")
             if not file_path:
                 file_path = f"full_odds_{league}_{season.replace('-', '_')}.json"
-            
+
             store_data(
                 storage_type=storage.value if storage else "local",
                 data=scraped_data,
                 storage_format=storage_format.value if storage_format else "json",
                 file_path=file_path,
             )
-            
+
             click.echo(f"Successfully scraped {len(scraped_data)} matches with full odds")
             click.echo(f"Saved to: {file_path}")
-            
+
             # Show sample
             if scraped_data:
                 sample = scraped_data[0]
-                click.echo(f"\nSample match data:")
+                click.echo("\nSample match data:")
                 click.echo(f"  Teams: {sample.get('home_team', '?')} vs {sample.get('away_team', '?')}")
                 click.echo(f"  Date: {sample.get('match_date', '?')}")
                 if sample.get("odds"):
@@ -317,7 +334,7 @@ def scrape_full(ctx, **kwargs):
         else:
             logger.error("Scraper did not return valid data.")
             sys.exit(1)
-            
+
     except Exception as e:
         logger.error(f"Error during scraping: {e}", exc_info=True)
         sys.exit(1)

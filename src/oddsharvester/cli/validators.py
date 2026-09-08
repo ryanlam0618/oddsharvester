@@ -2,12 +2,13 @@
 
 from datetime import datetime
 import re
+from urllib.parse import urlsplit
 
 import click
 
 from oddsharvester.core.sport_period_registry import SportPeriodRegistry
 from oddsharvester.utils.sport_league_constants import SPORTS_LEAGUES_URLS_MAPPING
-from oddsharvester.utils.sport_market_constants import Sport
+from oddsharvester.utils.sport_market_constants import FOOTBALL_UMBRELLA_MARKETS, Sport
 from oddsharvester.utils.utils import get_supported_markets
 
 
@@ -27,11 +28,8 @@ def validate_date(ctx, param, value):
     return value
 
 
-def validate_season(ctx, param, value):
-    """Validate season format (YYYY, YYYY-YYYY, or 'current')."""
-    if value is None:
-        return None
-
+def _validate_one_season(value: str) -> str:
+    """Validate a single season token (YYYY, YYYY-YYYY, or 'current')."""
     if value.lower() == "current":
         return value
 
@@ -52,18 +50,45 @@ def validate_season(ctx, param, value):
     raise click.BadParameter(f"Invalid season format '{value}'. Expected YYYY, YYYY-YYYY, or 'current'.")
 
 
-def validate_match_links(ctx, param, value):
-    """Validate match links format."""
+def validate_seasons(ctx, param, value):
+    """Validate a list of seasons, preserving order and dropping duplicates."""
     if not value:
-        return None
+        raise click.BadParameter("At least one season must be provided.")
 
+    seen: dict[str, None] = {}
+    for item in value:
+        seen[_validate_one_season(item)] = None
+    return list(seen)
+
+
+def _validate_link_list(links: list[str]) -> list[str]:
+    """Validate a flat list of match links against the OddsPortal URL shape."""
     url_pattern = re.compile(r"https?://www\.oddsportal\.com/.+")
-    invalid = [link for link in value if not url_pattern.match(link)]
+    invalid = [link for link in links if not url_pattern.match(link)]
 
     if invalid:
         raise click.BadParameter(f"Invalid match link(s): {', '.join(invalid)}")
 
-    return list(value)
+    return links
+
+
+def validate_match_links(ctx, param, value):
+    """Validate match links; each occurrence may itself be a comma-separated list."""
+    if not value:
+        return None
+
+    return _validate_link_list([link for chunk in value for link in chunk])
+
+
+def validate_match_links_file(ctx, param, value):
+    """Read match links from a file (one URL per line, blank lines ignored) and validate them."""
+    if value is None:
+        return None
+
+    with open(value, encoding="utf-8") as file:
+        links = [line.strip() for line in file if line.strip()]
+
+    return _validate_link_list(links) or None
 
 
 def validate_markets(ctx, param, value):
@@ -82,7 +107,8 @@ def validate_markets(ctx, param, value):
             return value
 
     supported = get_supported_markets(sport)
-    invalid = [m for m in value if m not in supported]
+    umbrella_tokens = FOOTBALL_UMBRELLA_MARKETS if sport is Sport.FOOTBALL else {}
+    invalid = [m for m in value if m not in supported and m not in umbrella_tokens]
 
     if invalid:
         raise click.BadParameter(
@@ -144,16 +170,26 @@ def validate_period(ctx, param, value):
 
 
 def validate_proxy_url(ctx, param, value):
-    """Validate proxy URL format."""
+    """Validate one or more proxy URLs (repeatable option → tuple).
+
+    Each URL may carry embedded credentials: scheme://[user:pass@]host:port.
+    """
     if not value:
-        return None
+        return value
 
-    proxy_pattern = re.compile(r"^(?P<scheme>https?|socks5|socks4)://(?P<host>[\w\.-]+):(?P<port>\d+)$")
+    proxy_pattern = re.compile(
+        r"^(?P<scheme>https?|socks5|socks4)://"
+        r"(?:(?P<user>[^:@/]+):(?P<pass>[^:@/]+)@)?"
+        r"(?P<host>[\w.-]+):(?P<port>\d+)$"
+    )
 
-    if not proxy_pattern.match(value):
-        raise click.BadParameter(
-            f"Invalid proxy URL '{value}'. Expected format: 'http[s]://host:port' or 'socks5://host:port'"
-        )
+    for url in value:
+        if not proxy_pattern.match(url):
+            raise click.BadParameter(
+                f"Invalid proxy URL '{url}'. Expected format: "
+                "'http[s]://host:port', 'socks5://host:port', or "
+                "'scheme://user:pass@host:port'"
+            )
 
     return value
 
@@ -190,3 +226,25 @@ def validate_file_path(ctx, param, value):
         raise click.BadParameter(f"Output path must not be an existing directory: '{value}'")
 
     return value
+
+
+def validate_base_url(ctx, param, value):
+    """Validate --base-url: host-only http(s) URL (no path/query/fragment)."""
+    if not value:
+        return None
+
+    normalized = value.rstrip("/")
+    parts = urlsplit(normalized)
+
+    if parts.scheme not in ("http", "https"):
+        raise click.BadParameter(
+            f"Invalid base URL '{value}'. Must start with http:// or https:// (e.g. https://www.centroquote.it)."
+        )
+    if not parts.netloc:
+        raise click.BadParameter(f"Invalid base URL '{value}'. Missing host (e.g. https://www.centroquote.it).")
+    if parts.path or parts.query or parts.fragment:
+        raise click.BadParameter(
+            f"Invalid base URL '{value}'. Provide host only, no path, query, or fragment (e.g. https://www.centroquote.it)."
+        )
+
+    return normalized

@@ -1,7 +1,7 @@
 repos:
   # Ruff for linting and formatting
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.4
+    rev: v0.14.10
     hooks:
       - id: ruff
         name: ruff (linting)
@@ -28,6 +28,7 @@ repos:
       - id: check-added-large-files
         name: check for added large files
         args: ["--maxkb=1000"]
+        exclude: '\.har$'
       - id: debug-statements
         name: debug statements (Python)
 
@@ -45,3 +46,4 @@ repos:
         name: check use type annotations
       - id: text-unicode-replacement-char
         name: check for unicode replacement chars
+        exclude: '\.har$'

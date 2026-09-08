@@ -304,7 +304,7 @@ def test_validate_and_convert_period_wrong_period_for_sport():
 
 def test_validate_and_convert_period_unregistered_sport():
     """Test that unregistered sports return None."""
-    result = validate_and_convert_period("full_time", "cricket")
+    result = validate_and_convert_period("full_time", "curling")
     assert result is None
 
 
@@ -321,3 +321,25 @@ def test_validate_and_convert_period_none_period():
     assert validate_and_convert_period(None, "football") == FootballPeriod.FULL_TIME
     assert validate_and_convert_period(None, "tennis") == TennisPeriod.FULL_TIME
     assert validate_and_convert_period(None, "basketball") == BasketballPeriod.FULL_INCLUDING_OT
+
+
+def test_get_supported_markets_handball():
+    """Handball returns its full market union."""
+    markets = get_supported_markets("handball")
+    assert "1x2" in markets
+    assert "home_away" in markets
+    assert "double_chance" in markets
+    assert "dnb" in markets
+    assert "over_under_40_5" in markets
+    assert "handicap_+9_5" in markets
+
+
+def test_get_supported_markets_volleyball():
+    """Volleyball returns its full market union (Home/Away, O/U+AH Sets/Points, Correct Score)."""
+    markets = get_supported_markets("volleyball")
+    assert "home_away" in markets
+    assert "over_under_sets_3_5" in markets
+    assert "over_under_points_184_5" in markets
+    assert "asian_handicap_+2_5_sets" in markets
+    assert "asian_handicap_+2_5_points" in markets
+    assert "correct_score_3_0" in markets

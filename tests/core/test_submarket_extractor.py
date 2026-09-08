@@ -2,171 +2,80 @@ from unittest.mock import AsyncMock
 
 from bs4 import BeautifulSoup
 import pytest
+from tests.dom_builders import line_row, odds_table
 
 from oddsharvester.core.market_extraction.submarket_extractor import SubmarketExtractor
 
 # =============================================================================
-# HTML FIXTURES — realistic HTML mimicking OddsPortal structure
+# HTML FIXTURES — the collapsed submarket line rows of a match view
 # =============================================================================
 
-# Over/Under market with data-testid pattern (Strategy 1)
-OVER_UNDER_HTML = """
-<div class="border-black-borders flex">
-    <div data-testid="over-under-collapsed-option-box" class="flex items-center">
-        <p class="max-sm:!hidden">Over/Under +2.5</p>
-        <p class="sm:!hidden">O/U 2.5</p>
-    </div>
-    <p data-testid="odd-container-default">1.85</p>
-    <p data-testid="odd-container-default">1.95</p>
-</div>
-"""
+# Over/Under line: the full label sits in the max-sm:hidden span (Strategy 1)
+OVER_UNDER_HTML = odds_table(line_row("Over/Under +2.5", ["1.85", "1.95"], short_label="O/U +2.5"))
 
-# Over/Under without max-sm:!hidden (Strategy 1 fallback to first <p>)
-OVER_UNDER_FALLBACK_P_HTML = """
-<div class="border-black-borders flex">
-    <div data-testid="over-under-collapsed-option-box" class="flex items-center">
-        <p>Over/Under +1.5</p>
-    </div>
-    <p data-testid="odd-container-default">1.40</p>
-    <p data-testid="odd-container-default">2.80</p>
-</div>
-"""
+# Line whose label is a plain paragraph (Strategy 2)
+OVER_UNDER_FALLBACK_P_HTML = odds_table(
+    '<tr class="h-9 cursor-pointer"><td><img alt="arrow"/><p>Over/Under +1.5</p></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>1.40</p></div></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>2.80</p></div></td></tr>'
+)
 
-# European Handicap with flex classes (Strategy 2)
-HANDICAP_FLEX_HTML = """
-<div class="border-black-borders flex">
-    <div class="flex w-full items-center justify-start pl-3 font-bold">
-        <p class="max-sm:!hidden">European Handicap -1</p>
-        <p class="sm:!hidden">EH -1</p>
-    </div>
-    <p data-testid="odd-container-default">2.50</p>
-    <p data-testid="odd-container-default">3.10</p>
-    <p data-testid="odd-container-default">2.80</p>
-</div>
-"""
+# European Handicap line with three outcomes
+HANDICAP_FLEX_HTML = odds_table(line_row("European Handicap -1", ["2.50", "3.10", "2.80"], short_label="EH -1"))
 
-# Flex class strategy fallback (no max-sm:!hidden)
-HANDICAP_FLEX_FALLBACK_HTML = """
-<div class="border-black-borders flex">
-    <div class="flex items-center justify-start pl-3">
-        <p>Asian Handicap -0.5</p>
-    </div>
-    <p data-testid="odd-container-default">1.90</p>
-    <p data-testid="odd-container-default">1.90</p>
-</div>
-"""
+# Handicap line whose label is a plain paragraph
+HANDICAP_FLEX_FALLBACK_HTML = odds_table(
+    '<tr class="h-9 cursor-pointer"><td><img alt="arrow"/><p>Asian Handicap -0.5</p></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>1.90</p></div></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>1.90</p></div></td></tr>'
+)
 
-# Font-bold strategy (Strategy 3)
-FONT_BOLD_HTML = """
-<div class="border-black-borders flex">
-    <p class="font-bold text-sm">Draw No Bet</p>
-    <p data-testid="odd-container-default">1.60</p>
-    <p data-testid="odd-container-default">2.20</p>
-</div>
-"""
+# Label carried by a bold paragraph
+FONT_BOLD_HTML = odds_table(
+    '<tr class="h-9 cursor-pointer"><td><img alt="arrow"/><p class="font-bold text-sm">Draw No Bet</p></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>1.60</p></div></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>2.20</p></div></td></tr>'
+)
 
-# Correct Score with ":" (Strategy 4)
-CORRECT_SCORE_HTML = """
-<div class="border-black-borders flex">
-    <p>1:0</p>
-    <p data-testid="odd-container-default">6.50</p>
-</div>
-"""
+# Correct Score label ("1:0")
+CORRECT_SCORE_HTML = odds_table(
+    '<tr class="h-9 cursor-pointer"><td><img alt="arrow"/><p>1:0</p></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>6.50</p></div></td></tr>'
+)
 
 # Row with no identifiable submarket name
-NO_NAME_ROW_HTML = """
-<div class="border-black-borders flex">
-    <p>2.50</p>
-    <p>45%</p>
-    <p data-testid="odd-container-default">1.80</p>
-    <p data-testid="odd-container-default">2.00</p>
-</div>
-"""
+NO_NAME_ROW_HTML = odds_table(
+    '<tr class="h-9 cursor-pointer"><td><img alt="arrow"/><p>2.50</p><p>45%</p></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>1.80</p></div></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>2.00</p></div></td></tr>'
+)
 
 # Multiple submarkets page (for is_preview_compatible and extract_visible_submarkets_passive)
-MULTI_SUBMARKET_PAGE_HTML = """
-<html><body>
-<div class="border-black-borders flex">
-    <div data-testid="over-under-collapsed-option-box">
-        <p class="max-sm:!hidden">Over/Under +1.5</p>
-    </div>
-    <p data-testid="odd-container-default">1.30</p>
-    <p data-testid="odd-container-default">3.40</p>
-</div>
-<div class="border-black-borders flex">
-    <div data-testid="over-under-collapsed-option-box">
-        <p class="max-sm:!hidden">Over/Under +2.5</p>
-    </div>
-    <p data-testid="odd-container-default">1.85</p>
-    <p data-testid="odd-container-default">1.95</p>
-</div>
-<div class="border-black-borders flex">
-    <div data-testid="over-under-collapsed-option-box">
-        <p class="max-sm:!hidden">Over/Under +3.5</p>
-    </div>
-    <p data-testid="odd-container-default">2.60</p>
-    <p data-testid="odd-container-default">1.50</p>
-</div>
-</body></html>
-"""
+MULTI_SUBMARKET_PAGE_HTML = odds_table(
+    line_row("Over/Under +1.5", ["1.30", "3.40"])
+    + line_row("Over/Under +2.5", ["1.85", "1.95"])
+    + line_row("Over/Under +3.5", ["2.60", "1.50"])
+)
 
 # Single submarket (incompatible with preview mode)
-SINGLE_SUBMARKET_PAGE_HTML = """
-<html><body>
-<div class="border-black-borders flex">
-    <div data-testid="over-under-collapsed-option-box">
-        <p class="max-sm:!hidden">Over/Under +2.5</p>
-    </div>
-    <p data-testid="odd-container-default">1.85</p>
-    <p data-testid="odd-container-default">1.95</p>
-</div>
-</body></html>
-"""
+SINGLE_SUBMARKET_PAGE_HTML = odds_table(line_row("Over/Under +2.5", ["1.85", "1.95"]))
 
 # Submarkets without sufficient odds (incompatible with preview)
-NO_ODDS_PAGE_HTML = """
-<html><body>
-<div class="border-black-borders flex">
-    <p class="font-bold">Market A</p>
-    <p data-testid="odd-container-default">1.85</p>
-</div>
-<div class="border-black-borders flex">
-    <p class="font-bold">Market B</p>
-    <p data-testid="odd-container-default">2.10</p>
-</div>
-</body></html>
-"""
+NO_ODDS_PAGE_HTML = odds_table(line_row("Market A", ["1.85"]) + line_row("Market B", ["2.10"]))
 
 # Empty page
 EMPTY_PAGE_HTML = "<html><body></body></html>"
 
 # Page with extra odds beyond labels
-EXTRA_ODDS_HTML = """
-<html><body>
-<div class="border-black-borders flex">
-    <div class="flex w-full items-center justify-start pl-3">
-        <p class="max-sm:!hidden">1X2</p>
-    </div>
-    <p data-testid="odd-container-default">2.50</p>
-    <p data-testid="odd-container-default">3.10</p>
-    <p data-testid="odd-container-default">2.80</p>
-</div>
-</body></html>
-"""
+EXTRA_ODDS_HTML = odds_table(line_row("1X2", ["2.50", "3.10", "2.80"]))
 
 # Correct Score page
-CORRECT_SCORE_PAGE_HTML = """
-<html><body>
-<div class="border-black-borders flex">
-    <p>1:0</p>
-    <p data-testid="odd-container-default">6.50</p>
-</div>
-<div class="border-black-borders flex">
-    <p>2:1</p>
-    <p data-testid="odd-container-default">8.00</p>
-</div>
-</body></html>
-"""
+CORRECT_SCORE_PAGE_HTML = odds_table(
+    '<tr class="h-9 cursor-pointer"><td><img alt="arrow"/><p>1:0</p></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>6.50</p></div></td></tr>'
+    + '<tr class="h-9 cursor-pointer"><td><img alt="arrow"/><p>2:1</p></td>'
+    + '<td class="w-[var(--event-table-odd-col)]"><div class="font-bold"><p>8.00</p></div></td></tr>'
+)
 
 
 class TestSubmarketExtractor:
@@ -348,30 +257,30 @@ class TestExtractSubmarketName:
         return SubmarketExtractor()
 
     def _parse_row(self, html: str):
-        """Parse HTML and return the first border-black-borders div."""
+        """Parse HTML and return the first line row (<tr>) of the table body."""
         soup = BeautifulSoup(html, "html.parser")
-        return soup.find("div", class_="border-black-borders")
+        return soup.select_one("tbody tr")
 
     def test_strategy1_data_testid_with_clean_name(self, extractor):
-        """Strategy 1: data-testid pattern with max-sm:!hidden class."""
+        """Strategy 1: clean-name element with max-sm:hidden class."""
         row = self._parse_row(OVER_UNDER_HTML)
         result = extractor._extract_submarket_name(row, "Over/Under")
         assert result == "Over/Under +2.5"
 
     def test_strategy1_data_testid_fallback_to_first_p(self, extractor):
-        """Strategy 1 fallback: data-testid pattern without max-sm:!hidden."""
+        """Fallback: no clean-name class, first non-numeric text wins."""
         row = self._parse_row(OVER_UNDER_FALLBACK_P_HTML)
         result = extractor._extract_submarket_name(row, "Over/Under")
         assert result == "Over/Under +1.5"
 
     def test_strategy2_flex_classes_with_clean_name(self, extractor):
-        """Strategy 2: flex class div with max-sm:!hidden class."""
+        """Clean-name element also works for handicap labels."""
         row = self._parse_row(HANDICAP_FLEX_HTML)
         result = extractor._extract_submarket_name(row, "European Handicap")
         assert result == "European Handicap -1"
 
     def test_strategy2_flex_classes_fallback_to_first_p(self, extractor):
-        """Strategy 2 fallback: flex class div without max-sm:!hidden."""
+        """Fallback for handicap labels without a clean-name class."""
         row = self._parse_row(HANDICAP_FLEX_FALLBACK_HTML)
         result = extractor._extract_submarket_name(row, "Asian Handicap")
         assert result == "Asian Handicap -0.5"
@@ -402,21 +311,16 @@ class TestExtractSubmarketName:
         assert result == "Over/Under +2.5"
 
     def test_strategy1_takes_priority_over_strategy2(self, extractor):
-        """Strategy 1 (data-testid) is tried before Strategy 2 (flex classes)."""
-        # HTML that could match both strategies — data-testid should win
+        """The clean-name element is tried before the generic text fallback."""
         html = """
-        <div class="border-black-borders flex">
-            <div data-testid="over-under-collapsed-option-box" class="flex items-center justify-start">
-                <p class="max-sm:!hidden">Strategy1 Winner</p>
-            </div>
-            <div class="flex items-center justify-start">
-                <p class="max-sm:!hidden">Strategy2 Loser</p>
-            </div>
-        </div>
+        <table><tbody><tr class="h-9 cursor-pointer">
+            <td><span>Generic Loser</span><span class="max-sm:hidden">Clean Winner</span></td>
+            <td><div data-testid="odd-container-default">1.85</div></td>
+        </tr></tbody></table>
         """
         row = self._parse_row(html)
         result = extractor._extract_submarket_name(row, "Over/Under")
-        assert result == "Strategy1 Winner"
+        assert result == "Clean Winner"
 
 
 class TestIsPreviewCompatibleMarketHTML:

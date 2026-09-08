@@ -14,10 +14,14 @@ from oddsharvester.utils.sport_market_constants import (
     BasketballAsianHandicapMarket,
     BasketballMarket,
     BasketballOverUnderMarket,
+    CricketMarket,
     FootballAsianHandicapMarket,
     FootballEuropeanHandicapMarket,
     FootballMarket,
     FootballOverUnderMarket,
+    HandballAsianHandicapMarket,
+    HandballMarket,
+    HandballOverUnderMarket,
     IceHockeyMarket,
     IceHockeyOverUnderMarket,
     RugbyHandicapMarket,
@@ -31,6 +35,12 @@ from oddsharvester.utils.sport_market_constants import (
     TennisMarket,
     TennisOverUnderGamesMarket,
     TennisOverUnderSetsMarket,
+    VolleyballAsianHandicapPointsMarket,
+    VolleyballAsianHandicapSetsMarket,
+    VolleyballCorrectScoreMarket,
+    VolleyballMarket,
+    VolleyballOverUnderPointsMarket,
+    VolleyballOverUnderSetsMarket,
 )
 
 logger = logging.getLogger(__name__)
@@ -60,6 +70,16 @@ SPORT_MARKETS_MAPPING: dict[Sport, list[type[Enum]]] = {
         AmericanFootballOverUnderMarket,
         AmericanFootballAsianHandicapMarket,
     ],
+    Sport.HANDBALL: [HandballMarket, HandballOverUnderMarket, HandballAsianHandicapMarket],
+    Sport.VOLLEYBALL: [
+        VolleyballMarket,
+        VolleyballOverUnderSetsMarket,
+        VolleyballOverUnderPointsMarket,
+        VolleyballAsianHandicapSetsMarket,
+        VolleyballAsianHandicapPointsMarket,
+        VolleyballCorrectScoreMarket,
+    ],
+    Sport.CRICKET: [CricketMarket],
 }
 
 

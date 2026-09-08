@@ -7,25 +7,52 @@ import sys
 
 import click
 
-from oddsharvester.cli.options import common_options
-from oddsharvester.cli.validators import validate_max_pages, validate_season
+from oddsharvester.cli.options import common_options, merged_match_links
+from oddsharvester.cli.types import COMMA_LIST
+from oddsharvester.cli.validators import validate_max_pages, validate_seasons
+from oddsharvester.core.scrape_result import ErrorType
 from oddsharvester.core.scraper_app import run_scraper
 from oddsharvester.storage.storage_manager import store_data
 from oddsharvester.utils.sport_market_constants import Sport
 
 logger = logging.getLogger(__name__)
 
-# Sports that support 'current' season
-CURRENT_SEASON_SPORTS = {"tennis", "football", "baseball", "ice-hockey", "rugby-league", "rugby-union"}
+
+def _format_combo_summary(combo_stats: list[dict], links_only: bool) -> str:
+    """Render the per-combo breakdown shown at the end of a multi-combo run."""
+    unit = "links" if links_only else "matches"
+    labels = [f"{c['league']} {c['season']}".strip() if c["season"] else c["league"] for c in combo_stats]
+    width = max(len(label) for label in labels)
+
+    lines = [f"Collected {unit} across {len(combo_stats)} combos:"]
+    empty = errored = 0
+
+    for label, combo in zip(labels, combo_stats, strict=True):
+        if combo["errored"]:
+            lines.append(f"  {label:<{width}}  error")
+            errored += 1
+        else:
+            lines.append(f"  {label:<{width}}  {combo['successful']}")
+            if combo["successful"] == 0:
+                empty += 1
+
+    if empty:
+        lines.append(f"{empty} combo(s) returned nothing.")
+    if errored:
+        lines.append(f"{errored} combo(s) errored.")
+
+    return "\n".join(lines)
 
 
 @click.command("historic")
 @common_options
 @click.option(
     "--season",
+    "seasons",
     required=True,
-    callback=validate_season,
-    help="Season to scrape (YYYY, YYYY-YYYY, or 'current').",
+    type=COMMA_LIST,
+    callback=validate_seasons,
+    help="Comma-separated seasons to scrape (YYYY, YYYY-YYYY, or 'current').",
 )
 @click.option(
     "--max-pages",
@@ -40,12 +67,16 @@ def historic(ctx, **kwargs):
     storage = kwargs["storage"]
     storage_format = kwargs["storage_format"]
     bookies_filter = kwargs.get("bookies_filter")
-    season = kwargs.get("season")
-
-    # Normalize 'current' to None for allowed sports
+    seasons = kwargs.get("seasons")
     sport_value = sport.value if isinstance(sport, Sport) else sport
-    if season and season.lower() == "current" and sport_value.lower() in CURRENT_SEASON_SPORTS:
-        season = None
+
+    match_links = merged_match_links(kwargs)
+    links_only = kwargs.get("links_only", False)
+    local_kickoff = kwargs.get("local_kickoff", False)
+    if links_only and match_links:
+        raise click.UsageError("--links-only cannot be combined with --match-link (links are already collected).")
+    if links_only and local_kickoff:
+        raise click.UsageError("--links-only cannot be combined with --local-kickoff (no match pages are visited).")
 
     try:
         checkpoint_enabled = os.getenv("OH_CHECKPOINT_SAVE", "1").lower() not in {"0", "false", "no"}
@@ -54,11 +85,11 @@ def historic(ctx, **kwargs):
         scraped_data = asyncio.run(
             run_scraper(
                 command="scrape_historic",
-                match_links=kwargs.get("match_links"),
+                match_links=match_links,
                 sport=sport_value,
                 date=None,
                 leagues=kwargs.get("leagues"),
-                season=season,
+                seasons=seasons,
                 markets=kwargs.get("markets"),
                 max_pages=kwargs.get("max_pages"),
                 proxy_url=kwargs.get("proxy_url"),
@@ -67,6 +98,7 @@ def historic(ctx, **kwargs):
                 browser_user_agent=kwargs.get("browser_user_agent"),
                 browser_locale_timezone=kwargs.get("browser_locale_timezone"),
                 browser_timezone_id=kwargs.get("browser_timezone_id"),
+                base_url=kwargs.get("base_url"),
                 target_bookmaker=kwargs.get("target_bookmaker"),
                 scrape_odds_history=kwargs.get("scrape_odds_history", False),
                 headless=kwargs.get("headless", False),
@@ -74,41 +106,70 @@ def historic(ctx, **kwargs):
                 bookies_filter=bookies_filter.value if bookies_filter else "all",
                 period=kwargs.get("period"),
                 request_delay=kwargs.get("request_delay", 1.0),
+                concurrency_tasks=kwargs.get("concurrency_tasks", 3),
+                links_only=links_only,
+                local_kickoff=local_kickoff,
                 checkpoint_file_path=file_path if checkpoint_enabled else None,
                 checkpoint_storage_type=storage.value if storage else "local",
                 checkpoint_storage_format=storage_format.value if storage_format else "json",
             )
         )
 
-        # Determine if scraping was successful (has data OR legitimately found 0 matches)
-        # Note: scraped_data.success = [] (empty list) is falsy, but 0 matches is valid data
-        # Only treat as failure if scraped_data itself is None (scrape crashed)
-        scrape_success = scraped_data is not None
-        has_matches = scraped_data.success if scrape_success else False
-
-        if scrape_success:
-            # Always save results (even if 0 matches) so orchestrator can skip retry
-            if not (checkpoint_enabled and file_path):
+        if scraped_data is not None:
+            # Always persist results (even when 0 matches) so a downstream
+            # orchestrator can distinguish "no data on OddsPortal" from
+            # "scrape never ran". Skipped only when per-match checkpoints
+            # already wrote the data incrementally.
+            if links_only or not (checkpoint_enabled and file_path):
                 store_data(
                     storage_type=storage.value if storage else "local",
                     data=scraped_data.success,
                     storage_format=storage_format.value if storage_format else "json",
                     file_path=file_path,
+                    append=kwargs.get("append", False),
                 )
-            match_count = scraped_data.stats.successful if scraped_data.stats else 0
-            if has_matches:
+            if scraped_data.stats:
+                if links_only:
+                    click.echo(
+                        f"Collected {scraped_data.stats.successful} match links "
+                        f"({scraped_data.stats.failed} listing pages failed)."
+                    )
+                elif scraped_data.success:
+                    click.echo(
+                        f"Successfully scraped {scraped_data.stats.successful} matches "
+                        f"({scraped_data.stats.failed} failed, {scraped_data.stats.success_rate:.1f}% success rate)."
+                    )
+
+            if len(scraped_data.combo_stats) > 1:
+                click.echo(_format_combo_summary(scraped_data.combo_stats, links_only=links_only))
+            if scraped_data.failed:
+                click.echo(f"Failed URLs: {[f.url for f in scraped_data.failed]}", err=True)
+
+            if not scraped_data.success:
+                # 0 matches with 0 failures is valid empty data (OddsPortal has
+                # nothing for this league/season), NOT an error: exit 0.
+                if not scraped_data.failed:
+                    click.echo(
+                        "No matches found (page loaded successfully, OddsPortal has no data for this "
+                        "league/season)."
+                    )
+                else:
+                    logger.error("Scraper did not return valid data.")
+                    sys.exit(1)
+
+            # A failed listing page hides an unknown number of matches: they were
+            # never discovered, so nothing downstream can detect the gap from the
+            # data itself. Signal it through the exit code, but keep what was
+            # collected so it can be inspected or re-run.
+            listing_failures = [f for f in scraped_data.failed if f.error_type is ErrorType.LISTING_PAGE]
+            if listing_failures:
+                logger.error(f"Incomplete collection: {len(listing_failures)} listing page(s) failed.")
                 click.echo(
-                    f"Successfully scraped {match_count} matches "
-                    f"({scraped_data.stats.failed} failed, {scraped_data.stats.success_rate:.1f}% success rate)."
+                    f"Incomplete collection: {len(listing_failures)} listing page(s) failed, so an unknown "
+                    f"number of matches were never discovered. The partial data was still written.",
+                    err=True,
                 )
-                if scraped_data.failed:
-                    click.echo(f"Failed URLs: {[f.url for f in scraped_data.failed]}", err=True)
-            else:
-                click.echo(
-                    f"No matches found (page loaded successfully, OddsPortal has no data for this league/season). "
-                    f"({scraped_data.stats.failed} failed, {scraped_data.stats.success_rate:.1f}% success rate)."
-                )
-                # Exit 0: this is valid empty data, not an error
+                sys.exit(1)
         else:
             logger.error("Scraper did not return valid data.")
             sys.exit(1)

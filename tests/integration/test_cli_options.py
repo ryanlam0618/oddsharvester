@@ -6,14 +6,15 @@ from pathlib import Path
 
 import pytest
 
-FOOTBALL_MATCH_URL = "https://www.oddsportal.com/football/england/premier-league/leicester-brentford-xQ77QTN0"
-BASKETBALL_MATCH_URL = "https://www.oddsportal.com/basketball/usa/nba/los-angeles-lakers-boston-celtics-0fwUQJEk/"
-TENNIS_MATCH_URL = (
-    "https://www.oddsportal.com/tennis/australia/atp-australian-open-2024/djokovic-novak-sinner-jannik-IwSMNP62/"
+FOOTBALL_MATCH_URL = "https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/leicester-KrrdAMyI/#xQ77QTN0"
+BASKETBALL_MATCH_URL = (
+    "https://www.oddsportal.com/basketball/h2h/boston-celtics-KYD9hVEm/los-angeles-lakers-ngegZ8bg/#0fwUQJEk"
 )
+TENNIS_MATCH_URL = "https://www.oddsportal.com/tennis/h2h/djokovic-novak-AZg49Et9/sinner-jannik-6HdC3z4H/#IwSMNP62"
 
 
 @pytest.mark.integration
+@pytest.mark.live_only
 class TestOutputFormatJSON:
     """Tests for JSON output format (default)."""
 
@@ -48,6 +49,7 @@ class TestOutputFormatJSON:
 
 
 @pytest.mark.integration
+@pytest.mark.live_only
 class TestOutputFormatCSV:
     """Tests for CSV output format."""
 
@@ -137,6 +139,7 @@ class TestOutputFormatCSV:
 
 
 @pytest.mark.integration
+@pytest.mark.live_only
 class TestBookiesFilter:
     """Tests for --bookies-filter option."""
 
@@ -213,6 +216,7 @@ class TestBookiesFilter:
 
 
 @pytest.mark.integration
+@pytest.mark.live_only
 class TestMultipleMarkets:
     """Tests for scraping multiple markets in one command."""
 

@@ -1,28 +1,34 @@
+import asyncio
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 from enum import Enum
 import random
 import re
 from typing import Any
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 from playwright.async_api import Page
 
 from oddsharvester.core.base_scraper import BaseScraper, _parse_date_header
-from oddsharvester.core.scrape_result import ScrapeResult, ScrapeStats
-from oddsharvester.core.url_builder import URLBuilder
-from oddsharvester.utils.bookies_filter_enum import BookiesFilter
+from oddsharvester.core.browser.pagination import WalkVerdict
+from oddsharvester.core.exceptions import PageNotFoundError
 from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
+from oddsharvester.core.scrape_result import ErrorType, FailedUrl, ScrapeResult, ScrapeStats
+from oddsharvester.core.url_builder import URLBuilder, normalize_inplay_match_url
+from oddsharvester.utils.bookies_filter_enum import BookiesFilter
 from oddsharvester.utils.constants import (
     DEFAULT_REQUEST_DELAY_S,
     GOTO_TIMEOUT_LONG_MS,
     GOTO_TIMEOUT_MS,
+    LISTING_PAGE_RETRY_ATTEMPTS,
+    LISTING_PAGE_RETRY_DELAY_S,
     MAX_PAGINATION_PAGES,
     ODDSPORTAL_BASE_URL,
     PAGE_COLLECTION_DELAY_MAX_MS,
     PAGE_COLLECTION_DELAY_MIN_MS,
+    RESULTS_PAGE_SIZE,
 )
-from oddsharvester.utils.utils import clean_html_text
 
 
 @dataclass
@@ -62,21 +68,15 @@ class OddsPortalScraper(BaseScraper):
         browser_user_agent: str | None = None,
         browser_locale_timezone: str | None = None,
         browser_timezone_id: str | None = None,
-        proxy: dict[str, str] | None = None,
+        proxy_manager=None,
     ):
-        """
-        Initializes Playwright using PlaywrightManager.
-
-        Args:
-            headless (bool): Whether to run Playwright in headless mode.
-            proxy (Optional[Dict[str, str]]): Proxy configuration if needed.
-        """
+        """Initializes Playwright using PlaywrightManager."""
         await self.playwright_manager.initialize(
             headless=headless,
             user_agent=browser_user_agent,
             locale=browser_locale_timezone,
             timezone_id=browser_timezone_id,
-            proxy=proxy,
+            proxy_manager=proxy_manager,
         )
 
     async def stop_playwright(self):
@@ -95,6 +95,8 @@ class OddsPortalScraper(BaseScraper):
         bookies_filter: BookiesFilter = BookiesFilter.ALL,
         period: Enum | None = None,
         request_delay: float = DEFAULT_REQUEST_DELAY_S,
+        concurrent_scraping_task: int = 3,
+        links_only: bool = False,
         checkpoint_file_path: str | None = None,
         checkpoint_storage_type: str = "local",
         checkpoint_storage_format: str = "json",
@@ -110,6 +112,11 @@ class OddsPortalScraper(BaseScraper):
             scrape_odds_history (bool): Whether to scrape and attach odds history.
             target_bookmaker (str): If set, only scrape odds for this bookmaker.
             max_pages (Optional[int]): Maximum number of pages to scrape (default is None for all pages).
+            links_only (bool): If True, stop after link collection and return the links (no odds scraping).
+            checkpoint_file_path (Optional[str]): Fork feature — persist each match immediately
+                after it is scraped so long season runs survive a crash.
+            checkpoint_storage_type (str): Storage backend used for checkpoints.
+            checkpoint_storage_format (str): Storage format used for checkpoints.
 
         Returns:
             ScrapeResult: Contains successful results, failed URLs, and statistics.
@@ -118,102 +125,95 @@ class OddsPortalScraper(BaseScraper):
         if not current_page:
             raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
 
-        base_url = URLBuilder.get_historic_matches_url(sport=sport, league=league, season=season)
+        base_url = URLBuilder.get_historic_matches_url(
+            sport=sport, league=league, season=season, base_url=self.base_url
+        )
         self.logger.info(f"Starting historic scraping for {sport} - {league} - {season}")
         self.logger.info(f"Base URL: {base_url}")
         self.logger.info(f"Max pages parameter: {max_pages}")
 
-        # Set consent cookies before navigation to prevent cookie banner
-        self.logger.info("Setting consent cookies in browser context...")
-        await self.browser_helper.set_consent_cookies_for_context(current_page.context)
-
-        # Block OneTrust scripts before navigation to prevent bot detection
+        # Fork anti-detection: set consent cookies + block OneTrust BEFORE navigation.
+        if self.browser_helper is not None:
+            self.logger.info("Setting consent cookies in browser context...")
+            await self.browser_helper.set_consent_cookies_for_context(current_page.context)
         self.logger.info("Blocking OneTrust scripts to prevent bot detection...")
         await self.playwright_manager.block_one_trust_for_page(current_page)
 
         # Navigate to the base URL
         self.logger.info("Navigating to base URL...")
-        await current_page.goto(base_url, timeout=60000)
-        
-        # Wait for page to be fully loaded
-        await current_page.wait_for_load_state('networkidle', timeout=30000)
-        
-        # Set consent cookies via JavaScript after page load
-        self.logger.info("Setting consent cookies via JavaScript...")
-        await current_page.evaluate(
-            """
-            () => {
-                const consentValue = 'groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1%2CC0005%3A1%2CC0006%3A1%2CC0007%3A1%2CC0008%3A1%2CC0009%3A1%2CC0010%3A1%2CC0011%3A1%2CC0012%3A1%2CC0013%3A1%2CC0014%3A1%2CC0015%3A1%2CC0016%3A1%2CC0017%3A1%2CC0018%3A1%2CC0019%3A1%2CC0020%3A1%2CC0021%3A1%2CC0022%3A1%2CC0023%3A1%2CC0024%3A1%2CC0025%3A1';
-                document.cookie = 'OptanonConsent=' + consentValue + '; domain=.oddsportal.com; path=/; max-age=31536000';
-                document.cookie = 'OptanonConsent=' + consentValue + '; domain=www.oddsportal.com; path=/; max-age=31536000';
-                document.cookie = 'OptanonAlertBoxClosed=Sun%20Apr%2019%202026%2000%3A00%3A00%20GMT%2B0000%20(Coordinated%20Universal%20Time); domain=.oddsportal.com; path=/; max-age=31536000';
-                
-                // Try to hide the banner if it exists
-                const banner = document.querySelector('#onetrust-banner-sdk');
-                if (banner) banner.style.display = 'none';
-                const consent = document.querySelector('#onetrust-consent-sdk');
-                if (consent) consent.style.display = 'none';
-                const dark = document.querySelector('.onetrust-pc-dark-filter');
-                if (dark) dark.style.display = 'none';
-            }
-            """
-        )
-        
-        # Add random delay to mimic human behavior
-        import random
-        await current_page.wait_for_timeout(random.randint(1000, 2000))
+        await current_page.goto(base_url)
+        self._assert_season_page_reached(requested_url=base_url, landed_url=current_page.url)
+        await self._prepare_page_for_scraping(page=current_page)
 
         # Analyze pagination and determine pages to scrape
         self.logger.info("Step 1: Analyzing pagination information...")
         pages_to_scrape = await self._get_pagination_info(page=current_page, max_pages=max_pages)
 
-        # Parse season years for season-aware date filtering in link collection
+        # Fork: season-aware row filtering during link collection.
         season_year: int | None = None
         season_end_year: int | None = None
-        m = re.match(r"^(\d{4})-(\d{4})$", season)
+        m = re.match(r"^(\d{4})-(\d{4})$", season or "")
         if m:
             season_year = int(m.group(1))
             season_end_year = int(m.group(2))
 
-        # Extract match data directly from results pages (Option B: bypasses h2h pages)
-        # This solves the issue where h2h pages always show the most recent match
-        self.logger.info("Step 2: Extracting match data directly from results pages...")
-        match_result = await self._extract_matches_from_results_page(
+        # Collect match links from all pages
+        self.logger.info("Step 2: Collecting match links from all pages...")
+        link_result = await self._collect_match_links(
             base_url=base_url,
             pages_to_scrape=pages_to_scrape,
+            page_limit=self._effective_page_limit(max_pages),
+            max_pages=max_pages,
             season_year=season_year,
             season_end_year=season_end_year,
+        )
+
+        if link_result.failed_pages:
+            self.logger.warning(f"Failed to collect links from pages: {link_result.failed_pages}")
+
+        if links_only:
+            self.logger.info(f"Links-only mode: returning {len(link_result.links)} match links without odds.")
+            return self._links_only_result(
+                rows=[{"match_link": link} for link in link_result.links],
+                context={"sport": sport, "league": league, "season": season},
+                failed_page_urls=[
+                    f"{base_url}{OddsPortalSelectors.page_fragment(p)}" for p in link_result.failed_pages
+                ],
+            )
+
+        # Extract odds from all collected links
+        self.logger.info("Step 3: Extracting odds from collected match links...")
+        self.logger.info(f"Total unique matches to process: {len(link_result.links)}")
+
+        result = await self.extract_match_odds(
             sport=sport,
+            match_links=link_result.links,
+            markets=markets,
+            scrape_odds_history=scrape_odds_history,
+            target_bookmaker=target_bookmaker,
+            concurrent_scraping_task=concurrent_scraping_task,
+            preview_submarkets_only=self.preview_submarkets_only,
+            bookies_filter=bookies_filter,
+            period=period,
+            request_delay=request_delay,
+            checkpoint_file_path=checkpoint_file_path,
+            checkpoint_storage_type=checkpoint_storage_type,
+            checkpoint_storage_format=checkpoint_storage_format,
+            season_year=season_year,
+            season_end_year=season_end_year,
         )
 
-        if match_result.failed_pages:
-            self.logger.warning(f"Failed to extract from pages: {match_result.failed_pages}")
+        for row in result.success:
+            row["season"] = season
 
-        self.logger.info(f"Extracted {len(match_result.matches)} matches from results pages")
-
-        # Save matches to checkpoint file
-        if checkpoint_file_path and match_result.matches:
-            try:
-                from oddsharvester.storage.storage_manager import store_data
-                store_data(
-                    storage_type=checkpoint_storage_type,
-                    data=match_result.matches,
-                    storage_format=checkpoint_storage_format,
-                    file_path=checkpoint_file_path,
-                )
-                self.logger.info(f"Saved {len(match_result.matches)} matches to {checkpoint_file_path}")
-            except Exception as e:
-                self.logger.error(f"Failed to save checkpoint: {e}")
-
-        # Build ScrapeResult from extracted matches
-        result = ScrapeResult(stats=ScrapeStats(total_urls=len(match_result.matches)))
-        result.success = match_result.matches
-        result.stats.successful = len(match_result.matches)
-
-        self.logger.info(
-            f"Scraping complete: {result.stats.successful}/{result.stats.total_urls} successful "
-            f"({result.stats.success_rate:.1f}%)"
-        )
+        # A failed listing page loses an entire page of matches that were never
+        # discovered, so it cannot show up as a per-match failure. Surface it here
+        # or the run reports 100% success on an incomplete dataset.
+        if link_result.failed_pages:
+            listing_failures = self._listing_page_failures(base_url, link_result.failed_pages)
+            result.failed.extend(listing_failures)
+            result.stats.failed += len(listing_failures)
+            result.stats.total_urls += len(listing_failures)
 
         return result
 
@@ -228,6 +228,10 @@ class OddsPortalScraper(BaseScraper):
         bookies_filter: BookiesFilter = BookiesFilter.ALL,
         period: Enum | None = None,
         request_delay: float = DEFAULT_REQUEST_DELAY_S,
+        concurrent_scraping_task: int = 3,
+        include_started: bool = False,
+        kickoff_within_hours: float | None = None,
+        links_only: bool = False,
     ) -> ScrapeResult:
         """
         Scrapes upcoming match odds.
@@ -239,6 +243,13 @@ class OddsPortalScraper(BaseScraper):
             markets (Optional[List[str]]): List of markets.
             scrape_odds_history (bool): Whether to scrape and attach odds history.
             target_bookmaker (str): If set, only scrape odds for this bookmaker.
+            include_started (bool): If True, also return matches that have
+                already started or finished. Default False keeps the listing
+                page's true "upcoming" semantics (GitHub issue #58).
+            kickoff_within_hours (Optional[float]): If set, only scrape matches
+                kicking off within this many hours from now, cutting request
+                volume by skipping far-off matches (GitHub issue #77).
+            links_only (bool): If True, stop after link collection and return the links (no odds scraping).
 
         Returns:
             ScrapeResult: Contains successful results, failed URLs, and statistics.
@@ -247,7 +258,7 @@ class OddsPortalScraper(BaseScraper):
         if not current_page:
             raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
 
-        url = URLBuilder.get_upcoming_matches_url(sport=sport, date=date, league=league)
+        url = URLBuilder.get_upcoming_matches_url(sport=sport, date=date, league=league, base_url=self.base_url)
         self.logger.info(f"Fetching upcoming odds from {url}")
 
         await current_page.goto(url, timeout=GOTO_TIMEOUT_MS, wait_until="domcontentloaded")
@@ -255,12 +266,12 @@ class OddsPortalScraper(BaseScraper):
 
         # Scroll to load all matches due to lazy loading
         self.logger.info("Scrolling page to load all upcoming matches...")
-        await self.browser_helper.scroll_until_loaded(
+        await self.scroller.scroll_until_loaded(
             page=current_page,
             timeout=30,
             scroll_pause_time=2,
             max_scroll_attempts=3,
-            content_check_selector="div[class*='eventRow']",
+            content_check_selector=OddsPortalSelectors.LISTING_ROW_SELECTOR,
         )
 
         # League page shows all upcoming dates; when a specific date is requested,
@@ -273,11 +284,26 @@ class OddsPortalScraper(BaseScraper):
             except ValueError:
                 self.logger.warning(f"Could not parse date '{date}' for filtering; returning all league matches.")
 
-        match_links = await self.extract_match_links(page=current_page, date_filter=date_filter)
+        rows = await self.extract_match_rows(
+            page=current_page,
+            date_filter=date_filter,
+            skip_started=not include_started,
+            kickoff_within_hours=kickoff_within_hours,
+            collect_kickoff=links_only,
+        )
 
-        if not match_links:
+        if not rows:
             self.logger.warning("No match links found for upcoming matches.")
             return ScrapeResult()
+
+        if links_only:
+            self.logger.info(f"Links-only mode: returning {len(rows)} match links without odds.")
+            return self._links_only_result(
+                rows=rows,
+                context={"sport": sport, "league": league, "date": date, "season": None},
+            )
+
+        match_links = [row["match_link"] for row in rows]
 
         return await self.extract_match_odds(
             sport=sport,
@@ -285,11 +311,102 @@ class OddsPortalScraper(BaseScraper):
             markets=markets,
             scrape_odds_history=scrape_odds_history,
             target_bookmaker=target_bookmaker,
+            concurrent_scraping_task=concurrent_scraping_task,
             preview_submarkets_only=self.preview_submarkets_only,
             bookies_filter=bookies_filter,
             period=period,
             request_delay=request_delay,
         )
+
+    async def scrape_live(
+        self,
+        sport: str,
+        league: str | None = None,
+        markets: list[str] | None = None,
+        match_links: list[str] | None = None,
+        target_bookmaker: str | None = None,
+        bookies_filter: BookiesFilter = BookiesFilter.ALL,
+        request_delay: float = DEFAULT_REQUEST_DELAY_S,
+        concurrent_scraping_task: int = 3,
+        links_only: bool = False,
+    ) -> ScrapeResult:
+        """
+        Scrapes a one-shot snapshot of in-play odds for currently live matches.
+
+        Listing source is /inplay-odds/live-now/<sport>/; each match is scraped
+        on its in-play view (per-bookmaker live odds plus live score/period).
+        When `match_links` is given the listing is skipped and those URLs are
+        normalized to their in-play form, which is the building block for
+        external re-sampling of a known match.
+
+        Args:
+            sport (str): The sport to scrape.
+            league (Optional[str]): Single league slug filter, applied after listing.
+            markets (Optional[List[str]]): List of markets.
+            match_links (Optional[List[str]]): Scrape these matches directly.
+            target_bookmaker (str): If set, only scrape odds for this bookmaker.
+            links_only (bool): If True, return collected live links without odds.
+
+        Returns:
+            ScrapeResult: Contains successful results, failed URLs, and statistics.
+        """
+        current_page = self.playwright_manager.page
+        if not current_page:
+            raise RuntimeError("Playwright has not been initialized. Call `start_playwright()` first.")
+
+        if match_links:
+            links = [normalize_inplay_match_url(link) for link in match_links]
+            await current_page.goto(ODDSPORTAL_BASE_URL, timeout=GOTO_TIMEOUT_LONG_MS, wait_until="domcontentloaded")
+            await self._prepare_page_for_scraping(page=current_page)
+        else:
+            url = URLBuilder.get_live_matches_url(sport=sport, base_url=self.base_url)
+            self.logger.info(f"Fetching live matches from {url}")
+
+            await current_page.goto(url, timeout=GOTO_TIMEOUT_MS, wait_until="domcontentloaded")
+            await self._prepare_page_for_scraping(page=current_page)
+            await self.scroller.scroll_until_loaded(
+                page=current_page,
+                timeout=30,
+                scroll_pause_time=2,
+                max_scroll_attempts=3,
+                content_check_selector=OddsPortalSelectors.LISTING_ROW_SELECTOR,
+            )
+
+            rows = await self.extract_live_match_links(page=current_page, sport=sport, league=league)
+            if not rows:
+                self.logger.info("No live matches found on the live-now listing.")
+                return ScrapeResult()
+            links = [row["match_link"] for row in rows]
+
+        if links_only:
+            self.logger.info(f"Links-only mode: returning {len(links)} live match links without odds.")
+            return self._links_only_result(
+                rows=[{"match_link": link} for link in links],
+                context={"sport": sport, "league": league},
+            )
+
+        result = await self.extract_match_odds(
+            sport=sport,
+            match_links=links,
+            markets=markets,
+            scrape_odds_history=False,
+            target_bookmaker=target_bookmaker,
+            concurrent_scraping_task=concurrent_scraping_task,
+            preview_submarkets_only=self.preview_submarkets_only,
+            bookies_filter=bookies_filter,
+            period=None,
+            request_delay=request_delay,
+            live_mode=True,
+        )
+
+        ended = [d for d in result.success if d.get("_live_ended")]
+        if ended:
+            self.logger.info(f"{len(ended)} matches ended between listing and scrape; dropped from output.")
+            result.success = [d for d in result.success if not d.get("_live_ended")]
+            result.stats.successful -= len(ended)
+            result.stats.total_urls -= len(ended)
+
+        return result
 
     async def scrape_matches(
         self,
@@ -301,6 +418,7 @@ class OddsPortalScraper(BaseScraper):
         bookies_filter: BookiesFilter = BookiesFilter.ALL,
         period: Enum | None = None,
         request_delay: float = DEFAULT_REQUEST_DELAY_S,
+        concurrent_scraping_task: int = 3,
     ) -> ScrapeResult:
         """
         Scrapes match odds from a list of specific match URLs.
@@ -330,7 +448,7 @@ class OddsPortalScraper(BaseScraper):
             markets=markets,
             scrape_odds_history=scrape_odds_history,
             target_bookmaker=target_bookmaker,
-            concurrent_scraping_task=len(match_links),
+            concurrent_scraping_task=concurrent_scraping_task,
             preview_submarkets_only=self.preview_submarkets_only,
             bookies_filter=bookies_filter,
             period=period,
@@ -346,15 +464,69 @@ class OddsPortalScraper(BaseScraper):
         """
         # Block OneTrust scripts to prevent bot detection (before any navigation)
         await self.playwright_manager.block_one_trust_for_page(page)
-        
-        # Set consent cookies before dismissing banner (needed for each page navigation)
-        await self.browser_helper.set_consent_cookie_via_page_js(page)
-        
+
+        if self.browser_helper is not None:
+            # Set consent cookies before dismissing banner (needed for each page navigation)
+            await self.browser_helper.set_consent_cookie_via_page_js(page)
+
         await self.set_odds_format(page=page)
-        await self.browser_helper.dismiss_cookie_banner(page=page)
-        await self.browser_helper.dismiss_overlays(page=page)
-        # Simulate human behavior after page preparation (synced from SofaScore)
-        await self.browser_helper.humanize_page(page=page)
+        if self.browser_helper is not None:
+            await self.browser_helper.dismiss_cookie_banner(page=page)
+            await self.browser_helper.dismiss_overlays(page=page)
+            # Simulate human behavior after page preparation (synced from SofaScore)
+            await self.browser_helper.humanize_page(page=page)
+        await self.cookie_dismisser.dismiss(page=page)
+
+    @staticmethod
+    def _effective_page_limit(max_pages: int | None) -> int:
+        """Explicit --max-pages overrides the default safety cap."""
+        return max_pages if max_pages else MAX_PAGINATION_PAGES
+
+    @staticmethod
+    def _listing_page_failures(base_url: str, failed_pages: list[int]) -> list[FailedUrl]:
+        """Build the failure entries for listing pages that could not be collected."""
+        return [
+            FailedUrl(
+                url=f"{base_url}{OddsPortalSelectors.page_fragment(page)}",
+                error_type=ErrorType.LISTING_PAGE,
+                error_message="Failed to collect links from listing page",
+            )
+            for page in failed_pages
+        ]
+
+    def _links_only_result(
+        self,
+        rows: list[dict],
+        context: dict,
+        failed_page_urls: list[str] | None = None,
+    ) -> ScrapeResult:
+        """Builds a ScrapeResult carrying collected match rows instead of odds data.
+
+        Each row must carry `match_link`. Any other key it holds is appended
+        after the context columns, so the link stays first and per-row extras last.
+        """
+        failed_page_urls = failed_page_urls or []
+        success = [
+            {"match_link": row["match_link"], **context, **{k: v for k, v in row.items() if k != "match_link"}}
+            for row in rows
+        ]
+        failed = [
+            FailedUrl(
+                url=url,
+                error_type=ErrorType.LISTING_PAGE,
+                error_message="Failed to collect links from listing page",
+            )
+            for url in failed_page_urls
+        ]
+        return ScrapeResult(
+            success=success,
+            failed=failed,
+            stats=ScrapeStats(
+                total_urls=len(success) + len(failed),
+                successful=len(success),
+                failed=len(failed),
+            ),
+        )
 
     async def _get_pagination_info(self, page: Page, max_pages: int | None) -> list[int]:
         """
@@ -369,35 +541,22 @@ class OddsPortalScraper(BaseScraper):
         """
         self.logger.info("Analyzing pagination information...")
 
-        # Find all pagination links
-        pagination_links = await page.query_selector_all("a.pagination-link:not([rel='next'])")
-        self.logger.info(f"Found {len(pagination_links)} pagination links")
-
-        # Extract page numbers
-        total_pages = []
-        for link in pagination_links:
-            try:
-                text = await link.inner_text()
-                if text.isdigit():
-                    page_num = int(text)
-                    total_pages.append(page_num)
-                    self.logger.debug(f"Found pagination link: {page_num}")
-            except Exception as e:
-                self.logger.warning(f"Error processing pagination link: {e}")
+        total_pages = await self.pagination_walker.read_widget(page=page)
 
         if not total_pages:
-            self.logger.info("No pagination found; scraping only the current page.")
+            self.logger.info(
+                "No pagination widget on this page: either a single-page league or a degraded response. "
+                "The walk will determine the page count."
+            )
             return [1]
 
-        # Sort and log all available pages
-        total_pages = sorted(total_pages)
         self.logger.info(f"Raw pagination pages found: {total_pages}")
 
         # Check for gaps in pagination (e.g., [1,2,3,4,5,6,7,8,9,10,27] -> missing 11-26)
         pages_to_scrape = self._fill_pagination_gaps(total_pages)
 
         # Apply page limit: explicit --max-pages overrides the default safety cap
-        effective_limit = max_pages if max_pages else MAX_PAGINATION_PAGES
+        effective_limit = self._effective_page_limit(max_pages)
         if len(pages_to_scrape) > effective_limit:
             self.logger.warning(
                 f"Pagination has {len(pages_to_scrape)} pages, limiting to {effective_limit} "
@@ -416,7 +575,8 @@ class OddsPortalScraper(BaseScraper):
 
         OddsPortal renders pagination with an ellipsis for large page ranges
         (e.g. ``[1,2,3,...,28]``), so the HTML only contains the endpoints.
-        This method fills the gap so all intermediate pages are scraped.
+        This determines the maximum under the page cap; the walk is what
+        actually ensures intermediate pages are scraped.
 
         Args:
             raw_pages (List[int]): Raw page numbers found in pagination.
@@ -436,19 +596,45 @@ class OddsPortalScraper(BaseScraper):
 
         return all_pages
 
+    @staticmethod
+    def _assert_season_page_reached(requested_url: str, landed_url: str) -> None:
+        """
+        Fail a season whose URL was redirected away instead of scraping what it landed on.
+
+        A season that does not exist under the requested slug does not always answer with a
+        not-found page: OddsPortal redirects some of them to the league's current fixtures,
+        which would otherwise be collected and labelled with the requested season (gotcha 4).
+        """
+        if urlparse(requested_url).path.rstrip("/") == urlparse(landed_url).path.rstrip("/"):
+            return
+
+        raise PageNotFoundError(
+            f"Season page redirected to {landed_url}; the season does not exist under this league slug.",
+            url=requested_url,
+        )
+
     async def _collect_match_links(
         self,
         base_url: str,
         pages_to_scrape: list[int],
+        page_limit: int = MAX_PAGINATION_PAGES,
+        max_pages: int | None = None,
         season_year: int | None = None,
         season_end_year: int | None = None,
     ) -> LinkCollectionResult:
         """
-        Collects match links from multiple pages.
+        Walks listing pages, collecting match links.
+
+        `pages_to_scrape` is a floor, not a plan: only its maximum is used, and the
+        walk always visits 1, 2, 3... contiguously from there, continuing while pages
+        come back full (issue #79). See gotchas 2 and 17.
 
         Args:
             base_url (str): The base URL of the historic matches.
-            pages_to_scrape (List[int]): Pages to scrape.
+            pages_to_scrape (List[int]): Only the maximum is used, as the walk's floor.
+            page_limit (int): Hard bound on how many pages the walk may visit.
+            max_pages (Optional[int]): The user-supplied --max-pages, if any; distinguishes
+                an intentional limit from the default safety cap in the truncation warning.
             season_year (Optional[int]): Start year of the season (e.g. 2016 for "2016-2017").
                 If not provided, extracted from base_url.
             season_end_year (Optional[int]): End year of the season (e.g. 2017 for "2016-2017").
@@ -457,6 +643,9 @@ class OddsPortalScraper(BaseScraper):
         Returns:
             LinkCollectionResult: Contains links found and tracking of successful/failed pages.
         """
+        planned_max = max(pages_to_scrape) if pages_to_scrape else 1
+        self.logger.info(f"Starting collection of match links from a floor of {planned_max} page(s)")
+
 
         if season_year is None or season_end_year is None:
             # Try to extract season from URL: .../laliga-2016-2017/...
@@ -472,38 +661,39 @@ class OddsPortalScraper(BaseScraper):
 
         result = LinkCollectionResult()
         all_links = []
+        frontier = planned_max
+        observed_max: int | None = None
+        page_number = 1
+        attempt = 1
 
-        for i, page_number in enumerate(pages_to_scrape, 1):
-            self.logger.info(f"Processing page {i}/{len(pages_to_scrape)}: {page_number}")
+        while page_number <= page_limit:
+            self.logger.info(f"Processing page {page_number} (frontier: {frontier}, limit: {page_limit})")
             tab = None
+            past_frontier = page_number >= frontier
 
             try:
                 tab = await self.playwright_manager.context.new_page()
-                
+
                 # Block OneTrust scripts BEFORE navigation on new tab
                 await self.playwright_manager.block_one_trust_for_page(tab)
-                
+
                 self.logger.debug(f"Created new tab for page {page_number}")
 
-                page_url = f"{base_url}#/page/{page_number}"
+                page_url = f"{base_url}{OddsPortalSelectors.page_fragment(page_number)}"
                 self.logger.info(f"Navigating to: {page_url}")
                 await tab.goto(page_url, timeout=GOTO_TIMEOUT_MS, wait_until="domcontentloaded")
                 delay = random.randint(PAGE_COLLECTION_DELAY_MIN_MS, PAGE_COLLECTION_DELAY_MAX_MS)  # noqa: S311
-                self.logger.debug(f"Waiting {delay}ms before processing...")
                 await tab.wait_for_timeout(delay)
 
                 self.logger.info(f"Scrolling page {page_number} to load all matches...")
-                scroll_success = await self.browser_helper.scroll_until_loaded(
+                scroll_success = await self.scroller.scroll_until_loaded(
                     page=tab,
                     timeout=30,
                     scroll_pause_time=2,
                     max_scroll_attempts=3,
-                    content_check_selector="div[class*='eventRow']",
+                    content_check_selector=OddsPortalSelectors.LISTING_ROW_SELECTOR,
                 )
-
-                if scroll_success:
-                    self.logger.debug(f"Successfully scrolled page {page_number}")
-                else:
+                if not scroll_success:
                     self.logger.warning(f"Scrolling may not have completed for page {page_number}")
 
                 self.logger.info(f"Extracting match links from page {page_number}...")
@@ -512,22 +702,100 @@ class OddsPortalScraper(BaseScraper):
                     season_year=season_year,
                     season_end_year=season_end_year,
                 )
+
+                # Read on every page, not just empty ones: the tab is already loaded, so
+                # this costs no request, and a widget missing from page 1 is often present
+                # on page 2. That is how the true count is recovered (issue #79).
+                widget_pages = await self.pagination_walker.read_widget(page=tab)
+                if widget_pages:
+                    observed_max = max(observed_max or 0, max(widget_pages))
+                    frontier = max(frontier, observed_max)
+                past_frontier = page_number >= frontier
+
+                verdict = self.pagination_walker.decide(
+                    requested_page=page_number,
+                    link_count=len(links),
+                    frontier=frontier,
+                    observed_max=observed_max,
+                    scroll_ok=scroll_success,
+                )
+
+                if verdict is WalkVerdict.PAGE_FAILED:
+                    # The truncation is transient, so fetch the page again before writing it
+                    # off: losing it costs a full re-run of the season to recover one page.
+                    if attempt <= LISTING_PAGE_RETRY_ATTEMPTS:
+                        self.logger.warning(
+                            f"Page {page_number} returned {len(links)} of {RESULTS_PAGE_SIZE} links; re-fetching it."
+                        )
+                        attempt += 1
+                        await asyncio.sleep(LISTING_PAGE_RETRY_DELAY_S)
+                        continue
+
+                    result.failed_pages.append(page_number)
+                    self.logger.warning(
+                        f"Page {page_number} returned {len(links)} of {RESULTS_PAGE_SIZE} links after "
+                        f"{attempt} attempts; treating it as failed."
+                    )
+                    # Keep what it did render: the page is already reported and the exit code
+                    # already non-zero, so dropping real rows only costs a re-scrape of links
+                    # the user is holding. They dedupe on match_link, which is unique.
+                    all_links.extend(links)
+                    if past_frontier:
+                        break
+                    attempt = 1
+                    page_number += 1
+                    continue
+
                 all_links.extend(links)
-                result.successful_pages += 1
+                # A zero-link STOP_COMPLETE past the planned floor is the widget-corroboration
+                # page confirming the season already ended; it rendered nothing, so it was not
+                # collected and must not inflate successful_pages (that count feeds the
+                # widget-mismatch warning below).
+                phantom_page = verdict is WalkVerdict.STOP_COMPLETE and not links and page_number > planned_max
+                if not phantom_page:
+                    result.successful_pages += 1
                 self.logger.info(f"Extracted {len(links)} links from page {page_number}")
+
+                if verdict is WalkVerdict.STOP_COMPLETE:
+                    break
 
             except Exception as e:
                 result.failed_pages.append(page_number)
                 self.logger.error(f"Error processing page {page_number}: {e}")
+                # Deliberate: a timeout past the frontier stops the walk same as PAGE_FAILED,
+                # even though a timeout doesn't prove the page is absent. Loud failure, not silent.
+                if past_frontier:
+                    break
 
             finally:
                 if tab:
                     await tab.close()
-                    self.logger.debug(f"Closed tab for page {page_number}")
 
-        result.links = list(set(all_links))
+            attempt = 1
+            page_number += 1
+
+        pages_walked = result.total_pages
+        if pages_walked > planned_max:
+            self.logger.warning(
+                f"Pagination widget reported {planned_max} page(s) but the walk collected {pages_walked} page(s). "
+                "The widget read was incomplete; walked past it to avoid truncation."
+            )
+        if page_number > page_limit:
+            if max_pages:
+                self.logger.warning(
+                    f"Walk stopped at the {page_limit}-page limit set by --max-pages. Result is intentionally "
+                    "truncated."
+                )
+            else:
+                self.logger.warning(
+                    f"Walk stopped at the {page_limit}-page safety cap. The season may be incomplete; "
+                    "raise --max-pages to collect the rest."
+                )
+
+        result.links = list(dict.fromkeys(all_links))
         self.logger.info("Collection Summary:")
-        self.logger.info(f"   - Total pages processed: {len(pages_to_scrape)}")
+        self.logger.info(f"   - Pages planned from widget: {planned_max}")
+        self.logger.info(f"   - Pages actually walked: {pages_walked}")
         self.logger.info(f"   - Successful pages: {result.successful_pages}")
         self.logger.info(f"   - Failed pages: {len(result.failed_pages)}")
         self.logger.info(f"   - Total links found: {len(all_links)}")
@@ -564,8 +832,6 @@ class OddsPortalScraper(BaseScraper):
         Returns:
             MatchDataResult: Contains match data and tracking of successful/failed pages.
         """
-        from bs4 import BeautifulSoup
-        from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
 
         if season_year is None or season_end_year is None:
             # Try to extract season from URL: .../laliga-2016-2017/...
@@ -605,7 +871,8 @@ class OddsPortalScraper(BaseScraper):
                 await tab.wait_for_timeout(delay)
 
                 self.logger.info(f"Scrolling page {page_number} to load all matches...")
-                scroll_success = await self.browser_helper.scroll_until_loaded(
+                scroller = self.browser_helper if self.browser_helper is not None else self.scroller
+                scroll_success = await scroller.scroll_until_loaded(
                     page=tab,
                     timeout=30,
                     scroll_pause_time=2,
@@ -674,7 +941,6 @@ class OddsPortalScraper(BaseScraper):
             List[Dict]: List of match data dictionaries.
         """
         from oddsharvester.core.odds_portal_selectors import OddsPortalSelectors
-        from oddsharvester.utils.utils import clean_html_text
 
         try:
             html_content = await page.content()
@@ -775,7 +1041,7 @@ class OddsPortalScraper(BaseScraper):
                         name_el = team_link.find(class_="participant-name")
                         if name_el:
                             team_name = name_el.get_text(strip=True)
-                    
+
                     # Extract score from the team link (it's in a sibling div)
                     # The score div is a direct child of the <a> element, after <p class="participant-name">
                     score_div = team_link.find("div", class_=re.compile(r"font-bold"))
@@ -786,7 +1052,7 @@ class OddsPortalScraper(BaseScraper):
                             score = None
                     else:
                         score = None
-                    
+
                     if i == 0:
                         home_team = team_name
                         home_score = score
@@ -819,7 +1085,7 @@ class OddsPortalScraper(BaseScraper):
 
             # Find all odd containers by data-testid
             odd_containers = row.find_all(attrs={"data-testid": re.compile(r"odd-container")})
-            
+
             if odd_containers:
                 # Extract odds values from the first occurrence of each container type
                 # The order in the HTML is: winning (1), default (X), default (2)
@@ -837,7 +1103,7 @@ class OddsPortalScraper(BaseScraper):
                                 seen_texts.add(text)
                         except ValueError:
                             continue
-                
+
                 # Map odds to 1, X, 2
                 # Based on the HTML structure:
                 # - First unique odds value = 1 (home win)
@@ -956,7 +1222,7 @@ class OddsPortalScraper(BaseScraper):
                 """
             )
 
-            if result.get('found'):
+            if result.get("found"):
                 self.logger.debug(f"Clicked tab: {tab_name}")
                 # Wait for content to update after clicking
                 await page.wait_for_timeout(3000)
@@ -998,7 +1264,7 @@ class OddsPortalScraper(BaseScraper):
                 """
             )
 
-            if result.get('found'):
+            if result.get("found"):
                 self.logger.debug("Clicked AH tab")
                 await page.wait_for_timeout(3000)
                 return True
@@ -1167,7 +1433,7 @@ class OddsPortalScraper(BaseScraper):
 
                             // Find home odds: match away odds (digits.digits) then find 1.XX after it
                             // Pattern: "AH" + space + negative number + space + away_odds + anything + 1.XX
-                            const homeOddsMatch = oddsSection.match(/(^|[0-9])(1\.\d{2})/);
+                            const homeOddsMatch = oddsSection.match(/(^|[0-9])(1\\.\\d{2})/);
                             if (!homeOddsMatch) break;
 
                             // Parse the home odds from the match
@@ -1240,16 +1506,17 @@ class OddsPortalScraper(BaseScraper):
 
         try:
             # Set consent cookies
-            await self.browser_helper.set_consent_cookies_for_context(current_page.context)
+            if self.browser_helper is not None:
+                await self.browser_helper.set_consent_cookies_for_context(current_page.context)
 
             # Navigate to h2h page
             self.logger.debug(f"Navigating to h2h page: {h2h_url}")
-            await current_page.goto(h2h_url, timeout=60000, wait_until='domcontentloaded')
+            await current_page.goto(h2h_url, timeout=60000, wait_until="domcontentloaded")
             await current_page.wait_for_timeout(5000)
 
             # Extract 1X2 odds (default view)
             html = await current_page.content()
-            soup = BeautifulSoup(html, 'lxml')
+            soup = BeautifulSoup(html, "lxml")
 
             # Find 1X2 odds in the default view
             odd_containers = soup.find_all(attrs={"data-testid": re.compile(r"odd-container")})

@@ -1,6 +1,6 @@
 [project]
 name = "oddsharvester"
-version = "0.2.0"
+version = "0.12.0"
 description = "A Python application to scrape and manage odds data from OddsPortal website."
 authors = [{ name = "Jordan TETE", email = "tetej171@gmail.com" }]
 readme = "README.md"
@@ -36,6 +36,7 @@ dependencies = [
     "mysql-connector-python>=9.7.0",
     "playwright>=1.57.0",
     "pytz>=2025.2",
+    "tzdata>=2025.2"
 ]
 
 [project.optional-dependencies]
@@ -56,7 +57,7 @@ Repository = "https://github.com/jordantete/OddsHarvester"
 Issues = "https://github.com/jordantete/OddsHarvester/issues"
 
 [tool.pytest.ini_options]
-pythonpath = "src"
+pythonpath = ["src", "."]
 testpaths = ["tests"]
 python_files = "test_*.py"
 python_classes = "Test*"

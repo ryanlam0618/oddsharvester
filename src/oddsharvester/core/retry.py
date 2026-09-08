@@ -12,6 +12,7 @@ import logging
 import random
 from typing import Any
 
+from oddsharvester.core.exceptions import ScraperError
 from oddsharvester.core.scrape_result import ErrorType
 
 logger = logging.getLogger(__name__)
@@ -56,6 +57,7 @@ class RetryResult:
     attempts: int
     last_error: str | None
     error_type: ErrorType | None
+    is_retryable: bool = False
 
 
 def is_retryable_error(error_message: str) -> bool:
@@ -90,7 +92,7 @@ def classify_error(error_message: str | None) -> ErrorType:
 
     if any(kw in error_lower for kw in ["timeout", "navigation", "connection", "network", "proxy"]):
         return ErrorType.NAVIGATION
-    elif any(kw in error_lower for kw in ["react-event-header", "header", "selector not found"]):
+    elif any(kw in error_lower for kw in ["react-event-header", "header", "selector not found", "hydration"]):
         return ErrorType.HEADER_NOT_FOUND
     elif any(kw in error_lower for kw in ["parse", "json", "decode", "lxml", "beautifulsoup"]):
         return ErrorType.PARSING
@@ -104,8 +106,18 @@ def classify_error(error_message: str | None) -> ErrorType:
     return ErrorType.UNKNOWN
 
 
-async def retry_with_backoff(
-    func: Callable[..., Coroutine[Any, Any, Any]],
+# ErrorTypes attributable to the proxy/IP (vs. content-parsing failures).
+# Used by multi-proxy failover to decide whether a failure counts against a proxy.
+PROXY_ATTRIBUTABLE_ERROR_TYPES = (ErrorType.NAVIGATION, ErrorType.RATE_LIMITED)
+
+
+def is_proxy_attributable_error(error_type: ErrorType | None) -> bool:
+    """Return True if this error type should count against the proxy that produced it."""
+    return error_type in PROXY_ATTRIBUTABLE_ERROR_TYPES
+
+
+async def retry_with_backoff[T](
+    func: Callable[..., Coroutine[Any, Any, T]],
     *args: Any,
     config: RetryConfig | None = None,
     **kwargs: Any,
@@ -127,6 +139,7 @@ async def retry_with_backoff(
 
     last_error: str | None = None
     error_type: ErrorType | None = None
+    is_retryable = False
 
     for attempt in range(1, config.max_attempts + 1):
         try:
@@ -137,12 +150,17 @@ async def retry_with_backoff(
                 attempts=attempt,
                 last_error=None,
                 error_type=None,
+                is_retryable=False,
             )
 
         except Exception as e:
             last_error = str(e)
-            error_type = classify_error(last_error)
-            is_retryable = is_retryable_error(last_error)
+            if isinstance(e, ScraperError):
+                error_type = e.error_type or classify_error(last_error)
+                is_retryable = e.is_retryable
+            else:
+                error_type = classify_error(last_error)
+                is_retryable = is_retryable_error(last_error)
 
             if not is_retryable or attempt == config.max_attempts:
                 logger.debug(f"Attempt {attempt}/{config.max_attempts} failed (not retrying): {last_error[:100]}")
@@ -152,6 +170,7 @@ async def retry_with_backoff(
                     attempts=attempt,
                     last_error=last_error,
                     error_type=error_type,
+                    is_retryable=is_retryable,
                 )
 
             # Calculate delay with exponential backoff and jitter
@@ -174,4 +193,5 @@ async def retry_with_backoff(
         attempts=config.max_attempts,
         last_error=last_error,
         error_type=error_type,
+        is_retryable=is_retryable,
     )

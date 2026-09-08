@@ -26,6 +26,12 @@ ODDS_FORMAT_WAIT_MS = 10000
 DROPDOWN_WAIT_MS = 1000
 TAB_SWITCH_WAIT_MS = 500
 FALLBACK_VERIFY_WAIT_MS = 1000
+# Match-view hydration (2026-08 redesign): content renders only after an
+# in-page hashchange to '#<id>:<market>;<scope>'; the first nudge right after
+# domcontentloaded can fire before the SPA has booted, hence the retries.
+MATCH_HYDRATION_ATTEMPTS = 3
+MATCH_HYDRATION_TIMEOUT_MS = 8000
+HASH_NUDGE_DELAY_MS = 1500
 
 # Odds history extraction timeouts (ms)
 ODDS_HISTORY_PRE_WAIT_MS = 2000
@@ -48,6 +54,9 @@ PAGE_COLLECTION_DELAY_MAX_MS = 8000
 # =============================================================================
 
 MAX_PAGINATION_PAGES = 50
+# Links a full results listing page yields. A page returning fewer is the last one,
+# unless the pagination widget promised a later page: then it was truncated (issue #78).
+RESULTS_PAGE_SIZE = 50
 
 # =============================================================================
 # RETRY CONSTANTS
@@ -62,6 +71,12 @@ OPERATION_RETRY_MAX_DELAY = 60.0
 MATCH_RETRY_MAX_ATTEMPTS = 2
 MATCH_RETRY_BASE_DELAY = 2.0
 MATCH_RETRY_MAX_DELAY = 30.0
+
+# Listing-page re-fetch (for a page that came back truncated during link collection).
+# Not handled by retry_with_backoff: the page answers 200 and raises nothing, so
+# there is no exception to classify as transient.
+LISTING_PAGE_RETRY_ATTEMPTS = 1
+LISTING_PAGE_RETRY_DELAY_S = 5.0
 
 # =============================================================================
 # RATE LIMITING CONSTANTS

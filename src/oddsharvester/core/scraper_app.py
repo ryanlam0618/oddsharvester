@@ -1,5 +1,10 @@
 import logging
+from urllib.parse import urlsplit
 
+from oddsharvester.core.browser.cookies import CookieDismisser
+from oddsharvester.core.browser.market_navigation import MarketTabNavigator
+from oddsharvester.core.browser.scrolling import PageScroller
+from oddsharvester.core.browser.selection import SelectionManager
 from oddsharvester.core.browser_helper import BrowserHelper
 from oddsharvester.core.odds_portal_market_extractor import OddsPortalMarketExtractor
 from oddsharvester.core.odds_portal_scraper import OddsPortalScraper
@@ -27,7 +32,7 @@ async def run_scraper(
     sport: str | None = None,
     date: str | None = None,
     leagues: list[str] | None = None,
-    season: str | None = None,
+    seasons: list[str] | None = None,
     markets: list | None = None,
     max_pages: int | None = None,
     proxy_url: str | None = None,
@@ -36,6 +41,7 @@ async def run_scraper(
     browser_user_agent: str | None = None,
     browser_locale_timezone: str | None = None,
     browser_timezone_id: str | None = None,
+    base_url: str | None = None,
     target_bookmaker: str | None = None,
     scrape_odds_history: bool = False,
     headless: bool = True,
@@ -43,6 +49,11 @@ async def run_scraper(
     bookies_filter: str = BookiesFilter.ALL.value,
     period: str | None = None,
     request_delay: float = DEFAULT_REQUEST_DELAY_S,
+    concurrency_tasks: int = 3,
+    include_started: bool = False,
+    kickoff_within_hours: float | None = None,
+    links_only: bool = False,
+    local_kickoff: bool = False,
     checkpoint_file_path: str | None = None,
     checkpoint_storage_type: str = "local",
     checkpoint_storage_format: str = "json",
@@ -60,36 +71,91 @@ async def run_scraper(
 
     logger.info(
         f"Starting scraper with parameters: command={command}, match_links={match_links}, "
-        f"sport={sport}, date={date}, leagues={leagues}, season={season}, markets={markets}, "
+        f"sport={sport}, date={date}, leagues={leagues}, seasons={seasons}, markets={markets}, "
         f"max_pages={max_pages}, proxy_url={proxy_url}, browser_user_agent={browser_user_agent}, "
         f"browser_locale_timezone={browser_locale_timezone}, browser_timezone_id={browser_timezone_id}, "
         f"scrape_odds_history={scrape_odds_history}, target_bookmaker={target_bookmaker}, "
         f"headless={headless}, preview_submarkets_only={preview_submarkets_only}, "
-        f"bookies_filter={bookies_filter}, period={period}, checkpoint_file_path={checkpoint_file_path}"
+        f"bookies_filter={bookies_filter}, period={period}, base_url={base_url}, local_kickoff={local_kickoff}, "
+        f"checkpoint_file_path={checkpoint_file_path}"
     )
 
-    proxy_manager = ProxyManager(proxy_url=proxy_url, proxy_user=proxy_user, proxy_pass=proxy_pass)
+    if base_url:
+        host = urlsplit(base_url).netloc.lower()
+        if (
+            host != "oddsportal.com"
+            and not host.endswith(".oddsportal.com")
+            and not browser_locale_timezone
+            and not browser_timezone_id
+        ):
+            logger.warning(
+                "Regional base URL '%s' is set but no --locale/--timezone provided. "
+                "OddsPortal mirrors localise content; pass --locale and --timezone matching "
+                "the region (see GitHub issue #45) for consistent results.",
+                base_url,
+            )
+
+    if isinstance(proxy_url, list | tuple):
+        proxy_manager = ProxyManager(proxy_urls=list(proxy_url), proxy_user=proxy_user, proxy_pass=proxy_pass)
+    else:
+        proxy_manager = ProxyManager(proxy_url=proxy_url, proxy_user=proxy_user, proxy_pass=proxy_pass)
     SportMarketRegistrar.register_all_markets()
     playwright_manager = PlaywrightManager()
     browser_helper = BrowserHelper()
-    market_extractor = OddsPortalMarketExtractor(browser_helper=browser_helper)
+    cookie_dismisser = CookieDismisser()
+    selection_manager = SelectionManager()
+    tab_navigator = MarketTabNavigator()
+    scroller = PageScroller()
+
+    market_extractor = OddsPortalMarketExtractor(
+        scroller=scroller,
+        tab_navigator=tab_navigator,
+        selection_manager=selection_manager,
+    )
 
     scraper = OddsPortalScraper(
         playwright_manager=playwright_manager,
-        browser_helper=browser_helper,
         market_extractor=market_extractor,
+        scroller=scroller,
+        cookie_dismisser=cookie_dismisser,
+        selection_manager=selection_manager,
         preview_submarkets_only=preview_submarkets_only,
+        local_kickoff=local_kickoff,
+        base_url=base_url,
+        browser_helper=browser_helper,
     )
 
     try:
-        proxy_config = proxy_manager.get_current_proxy()
         await scraper.start_playwright(
             headless=headless,
             browser_user_agent=browser_user_agent,
             browser_locale_timezone=browser_locale_timezone,
             browser_timezone_id=browser_timezone_id,
-            proxy=proxy_config,
+            proxy_manager=proxy_manager,
         )
+
+        # Checked before the generic match_links branch: live scraping needs its own
+        # in-play flow even when specific match links are supplied.
+        if command == CommandEnum.LIVE:
+            if not sport:
+                raise ValueError("'sport' must be provided for live scraping.")
+
+            logger.info(f"""
+                Scraping live matches for sport={sport}, leagues={leagues}, markets={markets},
+                target_bookmaker={target_bookmaker}, bookies_filter={bookies_filter}
+            """)
+            return await retry_scrape(
+                scraper.scrape_live,
+                sport=sport,
+                league=leagues[0] if leagues else None,
+                markets=markets,
+                match_links=list(match_links) if match_links else None,
+                target_bookmaker=target_bookmaker,
+                bookies_filter=bookies_filter_enum,
+                request_delay=request_delay,
+                concurrent_scraping_task=concurrency_tasks,
+                links_only=links_only,
+            )
 
         if match_links and sport:
             logger.info(f"""
@@ -107,26 +173,27 @@ async def run_scraper(
                 bookies_filter=bookies_filter_enum,
                 period=period_enum,
                 request_delay=request_delay,
+                concurrent_scraping_task=concurrency_tasks,
             )
 
         if command == CommandEnum.HISTORIC:
             if not sport or not leagues:
                 raise ValueError("Both 'sport' and 'leagues' must be provided for historic scraping.")
 
-            printable_season = season if season else "current"
+            printable_seasons = ", ".join(seasons) if seasons else "current"
             logger.info(
                 "\n                Scraping historical odds for "
-                f"sport={sport}, leagues={leagues}, season={printable_season}, "
+                f"sport={sport}, leagues={leagues}, seasons={printable_seasons}, "
                 f"markets={markets}, scrape_odds_history={scrape_odds_history}, "
                 f"target_bookmaker={target_bookmaker}, max_pages={max_pages}\n            "
             )
 
-            if len(leagues) == 1:
+            if len(leagues) == 1 and len(seasons or [None]) == 1:
                 return await retry_scrape(
                     scraper.scrape_historic,
                     sport=sport,
                     league=leagues[0],
-                    season=season,
+                    season=seasons[0] if seasons else None,
                     markets=markets,
                     scrape_odds_history=scrape_odds_history,
                     target_bookmaker=target_bookmaker,
@@ -134,17 +201,19 @@ async def run_scraper(
                     bookies_filter=bookies_filter_enum,
                     period=period_enum,
                     request_delay=request_delay,
+                    concurrent_scraping_task=concurrency_tasks,
+                    links_only=links_only,
                     checkpoint_file_path=checkpoint_file_path,
                     checkpoint_storage_type=checkpoint_storage_type,
                     checkpoint_storage_format=checkpoint_storage_format,
                 )
             else:
-                return await _scrape_multiple_leagues(
+                return await _scrape_league_season_combos(
                     scraper=scraper,
                     scrape_func=scraper.scrape_historic,
                     leagues=leagues,
+                    seasons=seasons or [None],
                     sport=sport,
-                    season=season,
                     markets=markets,
                     scrape_odds_history=scrape_odds_history,
                     target_bookmaker=target_bookmaker,
@@ -152,6 +221,8 @@ async def run_scraper(
                     bookies_filter=bookies_filter_enum,
                     period=period_enum,
                     request_delay=request_delay,
+                    concurrent_scraping_task=concurrency_tasks,
+                    links_only=links_only,
                     checkpoint_file_path=checkpoint_file_path,
                     checkpoint_storage_type=checkpoint_storage_type,
                     checkpoint_storage_format=checkpoint_storage_format,
@@ -179,9 +250,13 @@ async def run_scraper(
                         bookies_filter=bookies_filter_enum,
                         period=period_enum,
                         request_delay=request_delay,
+                        concurrent_scraping_task=concurrency_tasks,
+                        include_started=include_started,
+                        kickoff_within_hours=kickoff_within_hours,
+                        links_only=links_only,
                     )
                 else:
-                    return await _scrape_multiple_leagues(
+                    return await _scrape_league_season_combos(
                         scraper=scraper,
                         scrape_func=scraper.scrape_upcoming,
                         leagues=leagues,
@@ -193,6 +268,10 @@ async def run_scraper(
                         bookies_filter=bookies_filter_enum,
                         period=period_enum,
                         request_delay=request_delay,
+                        concurrent_scraping_task=concurrency_tasks,
+                        include_started=include_started,
+                        kickoff_within_hours=kickoff_within_hours,
+                        links_only=links_only,
                     )
             else:
                 logger.info(f"""
@@ -211,10 +290,16 @@ async def run_scraper(
                     bookies_filter=bookies_filter_enum,
                     period=period_enum,
                     request_delay=request_delay,
+                    concurrent_scraping_task=concurrency_tasks,
+                    include_started=include_started,
+                    kickoff_within_hours=kickoff_within_hours,
+                    links_only=links_only,
                 )
 
         else:
-            raise ValueError(f"Unknown command: {command}. Supported commands are 'upcoming-matches' and 'historic'.")
+            raise ValueError(
+                f"Unknown command: {command}. Supported commands are 'upcoming-matches', 'historic' and 'live'."
+            )
 
     except Exception as e:
         logger.error(f"An error occured: {e}")
@@ -224,56 +309,85 @@ async def run_scraper(
         await scraper.stop_playwright()
 
 
-async def _scrape_multiple_leagues(scraper, scrape_func, leagues: list[str], sport: str, **kwargs) -> ScrapeResult:
+async def _scrape_league_season_combos(
+    scraper,
+    scrape_func,
+    leagues: list[str],
+    sport: str,
+    seasons: list[str] | None = None,
+    **kwargs,
+) -> ScrapeResult:
     """
-    Helper function to handle multi-league scraping with error handling and logging.
+    Scrape every (league, season) combination sequentially, league outer.
+
+    `seasons=None` degenerates to one pass per league with no `season` kwarg,
+    which is the upcoming-matches behaviour (`scrape_upcoming` has no such parameter).
 
     Args:
         scraper: The scraper instance
-        scrape_func: The function to call for each league (scrape_historic or scrape_upcoming)
-        leagues: List of leagues to scrape
+        scrape_func: scrape_historic or scrape_upcoming
+        leagues: Leagues to scrape
         sport: The sport being scraped
-        **kwargs: Additional arguments to pass to the scrape function
+        seasons: Seasons to scrape per league, or None for a seasonless run
+        **kwargs: Additional arguments forwarded to the scrape function
 
     Returns:
-        ScrapeResult: Merged results from all leagues with combined statistics.
+        ScrapeResult: Merged results, with a per-combo breakdown in `combo_stats`.
     """
     combined_result = ScrapeResult()
-    failed_leagues = []
+    pass_season = seasons is not None
+    combos = [(league, season) for league in leagues for season in (seasons or [None])]
 
-    logger.info(f"Starting multi-league scraping for {len(leagues)} leagues: {leagues}")
+    logger.info(f"Starting scraping for {len(combos)} league/season combo(s)")
 
-    for i, league in enumerate(leagues, 1):
+    for i, (league, season) in enumerate(combos, 1):
+        label = f"{league} {season}" if season is not None else league
+        combo_kwargs = {**kwargs, "season": season} if pass_season else kwargs
+
         try:
-            logger.info(f"[{i}/{len(leagues)}] Processing league: {league}")
+            logger.info(f"[{i}/{len(combos)}] Processing: {label}")
 
-            league_result = await retry_scrape(scrape_func, sport=sport, league=league, **kwargs)
+            combo_result = await retry_scrape(scrape_func, sport=sport, league=league, **combo_kwargs)
 
-            if league_result and league_result.success:
-                combined_result.merge(league_result)
-                logger.info(
-                    f"Successfully scraped {league_result.stats.successful} matches from league: {league} "
-                    f"({league_result.stats.failed} failed)"
+            if combo_result is None:
+                logger.warning(f"No data returned for {label}")
+                combined_result.combo_stats.append(
+                    {"league": league, "season": season, "successful": 0, "failed": 0, "errored": True}
                 )
-            elif league_result:
-                # Result exists but no successful matches
-                combined_result.merge(league_result)
-                logger.warning(f"No successful matches for league: {league} ({league_result.stats.failed} failed)")
+                continue
+
+            combined_result.merge(combo_result)
+            combined_result.combo_stats.append(
+                {
+                    "league": league,
+                    "season": season,
+                    "successful": combo_result.stats.successful,
+                    "failed": combo_result.stats.failed,
+                    "errored": False,
+                }
+            )
+
+            if combo_result.success:
+                logger.info(
+                    f"Successfully scraped {combo_result.stats.successful} matches from {label} "
+                    f"({combo_result.stats.failed} failed)"
+                )
             else:
-                logger.warning(f"No data returned for league: {league}")
+                logger.warning(f"No successful matches for {label} ({combo_result.stats.failed} failed)")
 
         except Exception as e:
-            logger.error(f"Failed to scrape league '{league}': {e}")
-            failed_leagues.append(league)
+            logger.error(f"Failed to scrape {label}: {e}")
+            combined_result.combo_stats.append(
+                {"league": league, "season": season, "successful": 0, "failed": 0, "errored": True}
+            )
             continue
 
-    successful_leagues = len(leagues) - len(failed_leagues)
-
-    if failed_leagues:
-        logger.warning(f"Failed to scrape {len(failed_leagues)} leagues: {failed_leagues}")
+    errored = [c for c in combined_result.combo_stats if c["errored"]]
+    if errored:
+        logger.warning(f"Failed to scrape {len(errored)} combo(s)")
 
     logger.info(
-        f"Multi-league scraping completed: {successful_leagues}/{len(leagues)} leagues successful, "
+        f"Scraping completed: {len(combos) - len(errored)}/{len(combos)} combos successful, "
         f"{combined_result.stats.successful} total matches scraped, "
         f"{combined_result.stats.failed} failed ({combined_result.stats.success_rate:.1f}% success rate)"
     )

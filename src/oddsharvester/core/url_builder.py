@@ -1,10 +1,41 @@
-from datetime import UTC, datetime
 import re
+from urllib.parse import urlsplit, urlunsplit
 
 from oddsharvester.utils.constants import ODDSPORTAL_BASE_URL
 from oddsharvester.utils.league_aliases import get_league_slug_for_season
 from oddsharvester.utils.sport_league_constants import SPORTS_LEAGUES_URLS_MAPPING
 from oddsharvester.utils.sport_market_constants import Sport
+
+
+def rebase_url(url: str, base_url: str | None) -> str:
+    """
+    Swap the scheme and host of ``url`` with those of ``base_url``.
+
+    Path, query, and fragment are preserved exactly. When ``base_url`` is None
+    or empty, ``url`` is returned unchanged (the default oddsportal.com path).
+    Idempotent. ``base_url`` is expected to be host-only (validated upstream).
+    """
+    if not base_url:
+        return url
+
+    base = urlsplit(base_url)
+    parts = urlsplit(url)
+    return urlunsplit((base.scheme, base.netloc, parts.path, parts.query, parts.fragment))
+
+
+def normalize_inplay_match_url(url: str) -> str:
+    """
+    Ensure a match URL points at its in-play view.
+
+    Inserts the `/inplay-odds/` path segment before the fragment when it is
+    missing. Idempotent. Live-now listing hrefs already carry the segment;
+    this exists for user-supplied --match-link values in classic form.
+    """
+    parts = urlsplit(url)
+    path = parts.path
+    if not path.rstrip("/").endswith("/inplay-odds"):
+        path = path.rstrip("/") + "/inplay-odds/"
+    return urlunsplit((parts.scheme, parts.netloc, path, parts.query, parts.fragment))
 
 
 class URLBuilder:
@@ -13,7 +44,9 @@ class URLBuilder:
     """
 
     @staticmethod
-    def get_historic_matches_url(sport: str, league: str, season: str | None = None) -> str:
+    def get_historic_matches_url(
+        sport: str, league: str, season: str | None = None, base_url: str | None = None
+    ) -> str:
         """
         Constructs the URL for historical matches of a specific sport league and season.
 
@@ -23,7 +56,8 @@ class URLBuilder:
             season (Optional[str]): The season for which the URL is required. Accepts either:
                 - a single year (e.g., "2024")
                 - a range in 'YYYY-YYYY' format (e.g., "2023-2024")
-                - None or empty string for the current season
+                - the literal string "current" (case-insensitive), None, or empty string for the current season
+            base_url (Optional[str]): When provided, rebases the returned URL onto this scheme+host.
 
         Returns:
             str: The constructed URL for the league and season.
@@ -31,22 +65,22 @@ class URLBuilder:
         Raises:
             ValueError: If the season is provided but does not follow the expected format(s).
         """
-        base_url = URLBuilder.get_league_url(sport, league).rstrip("/")
+        if isinstance(season, str) and season.lower() == "current":
+            season = None
+
+        league_url = URLBuilder.get_league_url(sport, league).rstrip("/")
 
         # Resolve league alias for this season (handles sponsor name changes)
         alias_slug = get_league_slug_for_season(Sport(sport), league, season)
         if alias_slug:
-            base_url = base_url.rsplit("/", 1)[0] + "/" + alias_slug
+            league_url = league_url.rsplit("/", 1)[0] + "/" + alias_slug
 
         # Treat missing season as current
         if not season:
-            return f"{base_url}/results/"
-
-        if isinstance(season, str) and season.lower() == "current":
-            raise ValueError(f"Invalid season format: {season}. Expected format: 'YYYY' or 'YYYY-YYYY'")
+            return rebase_url(f"{league_url}/results/", base_url)
 
         if re.match(r"^\d{4}$", season):
-            return f"{base_url}-{season}/results/"
+            return rebase_url(f"{league_url}-{season}/results/", base_url)
 
         if re.match(r"^\d{4}-\d{4}$", season):
             start_year, end_year = map(int, season.split("-"))
@@ -57,19 +91,18 @@ class URLBuilder:
 
             # Special handling for baseball leagues
             if sport.lower() == "baseball":
-                return f"{base_url}-{start_year}/results/"
+                return rebase_url(f"{league_url}-{start_year}/results/", base_url)
 
-            # OddsPortal serves the current season at the base URL (no year suffix)
-            current_year = datetime.now(UTC).year
-            if end_year == current_year:
-                return f"{base_url}/results/"
-
-            return f"{base_url}-{season}/results/"
+            # Explicit ranges always carry the year suffix. The no-suffix base URL is
+            # reserved for 'current'/None (handled above): OddsPortal rolls that URL over
+            # to the next season once one finishes, so trusting the calendar year to drop
+            # the suffix sent finished-season requests to the wrong season.
+            return rebase_url(f"{league_url}-{season}/results/", base_url)
 
         raise ValueError(f"Invalid season format: {season}. Expected format: 'YYYY' or 'YYYY-YYYY'")
 
     @staticmethod
-    def get_upcoming_matches_url(sport: str, date: str, league: str | None = None) -> str:
+    def get_upcoming_matches_url(sport: str, date: str, league: str | None = None, base_url: str | None = None) -> str:
         """
         Constructs the URL for upcoming matches for a specific sport and date.
         If a league is provided, includes the league in the URL.
@@ -78,22 +111,24 @@ class URLBuilder:
             sport (str): The sport for which the URL is required (e.g., "football", "tennis").
             date (str): The date for which the matches are required in 'YYYY-MM-DD' format (e.g., "2025-01-15").
             league (Optional[str]): The league for which matches are required (e.g., "premier-league").
+            base_url (Optional[str]): When provided, rebases the returned URL onto this scheme+host.
 
         Returns:
             str: The constructed URL for upcoming matches.
         """
         if league:
-            return URLBuilder.get_league_url(sport, league)
-        return f"{ODDSPORTAL_BASE_URL}/matches/{sport}/{date}/"
+            return URLBuilder.get_league_url(sport, league, base_url=base_url)
+        return rebase_url(f"{ODDSPORTAL_BASE_URL}/matches/{sport}/{date}/", base_url)
 
     @staticmethod
-    def get_league_url(sport: str, league: str) -> str:
+    def get_league_url(sport: str, league: str, base_url: str | None = None) -> str:
         """
         Retrieves the URL associated with a specific league for a given sport.
 
         Args:
             sport (str): The sport name (e.g., "football", "tennis").
             league (str): The league name (e.g., "premier-league", "atp-tour").
+            base_url (Optional[str]): When provided, rebases the returned URL onto this scheme+host.
 
         Returns:
             str: The URL associated with the league.
@@ -104,11 +139,31 @@ class URLBuilder:
         sport_enum = Sport(sport)
 
         if sport_enum not in SPORTS_LEAGUES_URLS_MAPPING:
-            raise ValueError(f"Unsupported sport '{sport}'. Available: {', '.join(SPORTS_LEAGUES_URLS_MAPPING.keys())}")
+            raise ValueError(
+                f"Unsupported sport '{sport}'. Available: {', '.join(k.value for k in SPORTS_LEAGUES_URLS_MAPPING)}"
+            )
 
         leagues = SPORTS_LEAGUES_URLS_MAPPING[sport_enum]
 
         if league not in leagues:
             raise ValueError(f"Invalid league '{league}' for sport '{sport}'. Available: {', '.join(leagues.keys())}")
 
-        return leagues[league]
+        return rebase_url(leagues[league], base_url)
+
+    @staticmethod
+    def get_live_matches_url(sport: str, base_url: str | None = None) -> str:
+        """
+        Constructs the URL for the live-now in-play listing of a sport.
+
+        Args:
+            sport (str): The sport for which the URL is required (e.g., "football").
+            base_url (Optional[str]): When provided, rebases the returned URL onto this scheme+host.
+
+        Returns:
+            str: The live-now listing URL, e.g. https://www.oddsportal.com/inplay-odds/live-now/football/
+
+        Raises:
+            ValueError: If the sport is not a known Sport enum value.
+        """
+        sport_value = Sport(sport).value
+        return rebase_url(f"{ODDSPORTAL_BASE_URL}/inplay-odds/live-now/{sport_value}/", base_url)

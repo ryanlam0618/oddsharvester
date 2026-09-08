@@ -6,11 +6,13 @@ import click
 
 from oddsharvester.cli.types import BOOKIES_FILTER, COMMA_LIST, ODDS_FORMAT, SPORT, STORAGE_FORMAT, STORAGE_TYPE
 from oddsharvester.cli.validators import (
+    validate_base_url,
     validate_concurrency,
     validate_file_path,
     validate_leagues,
     validate_markets,
     validate_match_links,
+    validate_match_links_file,
     validate_period,
     validate_proxy_url,
 )
@@ -20,11 +22,14 @@ from oddsharvester.utils.period_constants import (
     AmericanFootballPeriod,
     BaseballPeriod,
     BasketballPeriod,
+    CricketPeriod,
     FootballPeriod,
+    HandballPeriod,
     IceHockeyPeriod,
     RugbyLeaguePeriod,
     RugbyUnionPeriod,
     TennisPeriod,
+    VolleyballPeriod,
 )
 
 
@@ -40,9 +45,18 @@ def _get_all_periods():
         AmericanFootballPeriod,
         IceHockeyPeriod,
         BaseballPeriod,
+        HandballPeriod,
+        VolleyballPeriod,
+        CricketPeriod,
     ]:
         periods.update(p.value for p in period_enum)
     return sorted(periods)
+
+
+def merged_match_links(kwargs) -> list[str] | None:
+    """Combine --match-link and --match-links-file values, deduped, flag links first."""
+    merged = list(dict.fromkeys((kwargs.get("match_links") or []) + (kwargs.get("match_links_file") or [])))
+    return merged or None
 
 
 def common_options(func):
@@ -100,6 +114,27 @@ def common_options(func):
         help="Output file path.",
     )
     @click.option(
+        "--append/--no-append",
+        default=False,
+        envvar="OH_APPEND",
+        help="Append to the output file instead of overwriting it (default: overwrite).",
+    )
+    @click.option(
+        "--links-only/--no-links-only",
+        "links_only",
+        default=False,
+        envvar="OH_LINKS_ONLY",
+        help="Collect match links only, without scraping odds. Market/odds options are ignored.",
+    )
+    @click.option(
+        "--local-kickoff/--no-local-kickoff",
+        "local_kickoff",
+        default=False,
+        envvar="OH_LOCAL_KICKOFF",
+        help="Add venue-local kickoff time (venue_timezone + match_date_venue_local) to each record. "
+        "match_date stays UTC. Distinct from --timezone, which sets the browser context timezone.",
+    )
+    @click.option(
         "--headless/--no-headless",
         default=False,
         envvar="OH_HEADLESS",
@@ -119,15 +154,25 @@ def common_options(func):
         "--match-link",
         "match_links",
         multiple=True,
+        type=COMMA_LIST,
         callback=validate_match_links,
-        help="Specific match URL(s) to scrape. Can be repeated.",
+        help="Specific match URL(s) to scrape. Comma-separated and/or repeated.",
+    )
+    @click.option(
+        "--match-links-file",
+        "match_links_file",
+        type=click.Path(exists=True, dir_okay=False),
+        callback=validate_match_links_file,
+        help="File with match URLs to scrape, one per line. Combines with --match-link.",
     )
     @click.option(
         "--proxy-url",
         "proxy_url",
+        multiple=True,
         callback=validate_proxy_url,
         envvar="OH_PROXY_URL",
-        help="Proxy URL (e.g., http://proxy.example.com:8080 or socks5://proxy:1080).",
+        help="Proxy URL (repeatable). Format: http[s]://host:port, socks5://host:port, "
+        "or scheme://user:pass@host:port. Repeat to spread load across proxies.",
     )
     @click.option(
         "--proxy-user",
@@ -158,6 +203,16 @@ def common_options(func):
         "browser_timezone_id",
         envvar="OH_TIMEZONE",
         help="Browser timezone ID (e.g., Europe/Brussels).",
+    )
+    @click.option(
+        "--base-url",
+        "base_url",
+        callback=validate_base_url,
+        envvar="OH_BASE_URL",
+        help=(
+            "Regional OddsPortal domain to scrape instead of www.oddsportal.com "
+            "(e.g. https://www.centroquote.it). Pair with --locale/--timezone matching the region."
+        ),
     )
     @click.option(
         "--target-bookmaker",

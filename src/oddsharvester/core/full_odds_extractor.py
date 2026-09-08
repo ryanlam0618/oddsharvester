@@ -6,24 +6,14 @@ from h2h pages by clicking through all available tabs.
 """
 
 import asyncio
+from datetime import datetime
 import random
-import re
-from datetime import UTC, date, datetime
 from typing import Any
 
-from bs4 import BeautifulSoup
 from playwright.async_api import Page
 
-from oddsharvester.core.base_scraper import BaseScraper, _parse_date_header
-from oddsharvester.core.odds_portal_scraper import OddsPortalScraper, MatchDataResult
+from oddsharvester.core.odds_portal_scraper import OddsPortalScraper
 from oddsharvester.core.url_builder import URLBuilder
-from oddsharvester.utils.constants import (
-    DEFAULT_REQUEST_DELAY_S,
-    GOTO_TIMEOUT_MS,
-    PAGE_COLLECTION_DELAY_MAX_MS,
-    PAGE_COLLECTION_DELAY_MIN_MS,
-    ODDSPORTAL_BASE_URL,
-)
 
 
 class FullOddsExtractor:
@@ -77,7 +67,7 @@ class FullOddsExtractor:
                 """
             )
 
-            if result.get('found'):
+            if result.get("found"):
                 self.logger.debug(f"Clicked tab: {tab_name}")
                 # Wait for content to update after clicking
                 await page.wait_for_timeout(2000)
@@ -132,7 +122,7 @@ class FullOddsExtractor:
                 }
                 """
             )
-            
+
             if odds:
                 self.logger.debug(f"Extracted 1X2 odds: {odds}")
             return odds
@@ -334,7 +324,7 @@ class FullOddsExtractor:
         try:
             # Navigate to h2h page
             self.logger.debug(f"Navigating to: {h2h_url}")
-            await page.goto(h2h_url, timeout=60000, wait_until='domcontentloaded')
+            await page.goto(h2h_url, timeout=60000, wait_until="domcontentloaded")
             await page.wait_for_timeout(3000)
 
             # Extract 1X2 odds (default view)
@@ -380,11 +370,11 @@ class FullOddsExtractor:
         """
         matches_to_process = matches[:max_matches] if max_matches else matches
         total = len(matches_to_process)
-        
+
         self.logger.info(f"Enriching {total} matches with full odds...")
-        
+
         enriched_matches = []
-        
+
         for i, match in enumerate(matches_to_process, 1):
             try:
                 h2h_url = match.get("h2h_url") or match.get("match_link")
@@ -394,12 +384,12 @@ class FullOddsExtractor:
 
                 if progress_callback:
                     progress_callback(i, total)
-                
+
                 self.logger.info(f"Processing match {i}/{total}: {match.get('home_team', '?')} vs {match.get('away_team', '?')}")
-                
+
                 # Extract full odds
                 odds = await self.extract_full_odds_from_h2h(h2h_url)
-                
+
                 # Add odds to match data
                 enriched_match = match.copy()
                 if odds.get("1X2"):
@@ -408,13 +398,13 @@ class FullOddsExtractor:
                     enriched_match["over_under"] = odds["over_under"]
                 if odds.get("asian_handicap"):
                     enriched_match["asian_handicap"] = odds["asian_handicap"]
-                
+
                 enriched_matches.append(enriched_match)
-                
+
                 # Delay to avoid rate limiting
                 if i < total:
                     await asyncio.sleep(delay_between_requests + random.uniform(0, 1))
-                    
+
             except Exception as e:
                 self.logger.error(f"Error processing match {i}/{total}: {e}")
                 # Still add the match without enriched odds
@@ -459,53 +449,53 @@ async def scrape_league_with_full_odds(
         Dict with 'matches' (list of enriched match data) and 'stats' (statistics).
     """
     logger = scraper.logger
-    
+
     if markets is None:
-        markets = ['1x2', 'over_under', 'asian_handicap']
-    
+        markets = ["1x2", "over_under", "asian_handicap"]
+
     logger.info(f"Starting full odds extraction for {sport} - {league} - {season}")
-    
+
     # Phase 1: Extract match data from results pages
     logger.info("Phase 1: Extracting match data from results pages...")
-    
+
     base_url = URLBuilder.get_historic_matches_url(sport=sport, league=league, season=season)
-    
+
     # Navigate to get pagination info
     page = scraper.playwright_manager.page
-    await page.goto(base_url, timeout=60000, wait_until='domcontentloaded')
+    await page.goto(base_url, timeout=60000, wait_until="domcontentloaded")
     await page.wait_for_timeout(2000)
-    
+
     # Get pages to scrape
     pages_to_scrape = await scraper._get_pagination_info(page=page, max_pages=max_pages)
-    
+
     # Extract matches from results pages
     result = await scraper._extract_matches_from_results_page(
         base_url=base_url,
         pages_to_scrape=pages_to_scrape,
-        season_year=int(season.split('-')[0]) if '-' in season else None,
-        season_end_year=int(season.split('-')[1]) if '-' in season else None,
+        season_year=int(season.split("-")[0]) if "-" in season else None,
+        season_end_year=int(season.split("-")[1]) if "-" in season else None,
         sport=sport,
     )
-    
+
     matches = result.matches
     logger.info(f"Phase 1 complete: extracted {len(matches)} matches")
-    
+
     # Phase 2: Enrich with full odds
-    if 'over_under' in markets or 'asian_handicap' in markets or '1x2' in markets:
+    if "over_under" in markets or "asian_handicap" in markets or "1x2" in markets:
         logger.info("Phase 2: Enriching matches with full odds...")
-        
+
         extractor = FullOddsExtractor(scraper)
-        
+
         # Progress tracking
         start_time = datetime.now()
         last_save_time = start_time
-        
+
         def progress_callback(current: int, total: int):
             elapsed = (datetime.now() - start_time).total_seconds()
             if current > 0:
                 eta = (elapsed / current) * (total - current)
                 logger.info(f"Progress: {current}/{total} ({current/total*100:.1f}%) - ETA: {eta/60:.1f} min")
-            
+
             # Save checkpoint periodically
             nonlocal last_save_time
             if current % save_checkpoint_every == 0 or current == total:
@@ -513,51 +503,51 @@ async def scrape_league_with_full_odds(
                 if (checkpoint_time - last_save_time).total_seconds() > 60:
                     logger.info(f"Saving checkpoint after {current} matches...")
                     last_save_time = checkpoint_time
-        
+
         # Limit matches if specified
         matches_to_process = matches[:max_matches] if max_matches else matches
         logger.info(f"Processing {len(matches_to_process)} matches (max_matches={max_matches})")
-        
+
         enriched_matches = []
         processed = 0
-        
+
         for match in matches_to_process:
             try:
                 processed += 1
                 progress_callback(processed, len(matches_to_process))
-                
+
                 h2h_url = match.get("h2h_url") or match.get("match_link")
                 if not h2h_url:
-                    logger.warning(f"Match has no h2h_url, skipping")
+                    logger.warning("Match has no h2h_url, skipping")
                     enriched_matches.append(match)
                     continue
 
                 # Extract full odds
                 odds = await extractor.extract_full_odds_from_h2h(h2h_url)
-                
+
                 # Add odds to match data
                 enriched_match = match.copy()
-                
-                if '1x2' in markets and odds.get("1X2"):
+
+                if "1x2" in markets and odds.get("1X2"):
                     enriched_match["odds"] = odds["1X2"]
-                if 'over_under' in markets and odds.get("over_under"):
+                if "over_under" in markets and odds.get("over_under"):
                     enriched_match["over_under"] = odds["over_under"]
-                if 'asian_handicap' in markets and odds.get("asian_handicap"):
+                if "asian_handicap" in markets and odds.get("asian_handicap"):
                     enriched_match["asian_handicap"] = odds["asian_handicap"]
-                
+
                 enriched_matches.append(enriched_match)
-                
+
                 # Delay to avoid rate limiting
                 if processed < len(matches_to_process):
                     await asyncio.sleep(delay_between_requests + random.uniform(0, 1))
-                    
+
             except Exception as e:
                 logger.error(f"Error processing match: {e}")
                 enriched_matches.append(match.copy())
-        
+
         matches = enriched_matches
         logger.info(f"Phase 2 complete: enriched {len(matches)} matches")
-    
+
     # Summary
     total_time = (datetime.now() - start_time).total_seconds()
     logger.info("=" * 60)
@@ -566,7 +556,7 @@ async def scrape_league_with_full_odds(
     logger.info(f"  Total time: {total_time/60:.1f} minutes")
     logger.info(f"  Average time per match: {total_time/len(matches):.1f} seconds")
     logger.info("=" * 60)
-    
+
     return {
         "matches": matches,
         "stats": {
