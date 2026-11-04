@@ -66,3 +66,4 @@ docs/specs/
 scraped_data.json
 scraped_data.csv
 _docker_out/
+data/.patchright-profile/

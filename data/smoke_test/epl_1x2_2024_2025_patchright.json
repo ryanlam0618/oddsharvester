@@ -1,0 +1,100 @@
+[
+    {
+        "scraped_date": "2026-11-04 17:20:52 UTC",
+        "match_date": "2025-02-22 17:30:00 UTC",
+        "season": null,
+        "match_link": "https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/chelsea-4fGZN2oK/#OMsYBU87",
+        "home_team": "Aston Villa",
+        "away_team": "Chelsea",
+        "league_name": "Premier League",
+        "home_score": "2",
+        "away_score": "1",
+        "partial_results": "(0:1, 2:0)",
+        "venue": null,
+        "venue_town": null,
+        "venue_country": null,
+        "match_info": null,
+        "1x2_market": [
+            {
+                "1": "2.70",
+                "X": "3.42",
+                "2": "2.72",
+                "bookmaker_name": "1xBet",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.64",
+                "X": "3.34",
+                "2": "2.66",
+                "bookmaker_name": "22Bet",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.60",
+                "X": "3.55",
+                "2": "2.65",
+                "bookmaker_name": "bet-at-home",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.60",
+                "X": "3.30",
+                "2": "2.63",
+                "bookmaker_name": "bet365",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.65",
+                "X": "3.60",
+                "2": "2.65",
+                "bookmaker_name": "Betfury",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.63",
+                "X": "3.65",
+                "2": "2.70",
+                "bookmaker_name": "BetInAsia",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.60",
+                "X": "3.45",
+                "2": "2.65",
+                "bookmaker_name": "Bets.io",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.62",
+                "X": "3.60",
+                "2": "2.68",
+                "bookmaker_name": "Betsson",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.63",
+                "X": "3.59",
+                "2": "2.69",
+                "bookmaker_name": "Cloudbet",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "2.64",
+                "X": "3.67",
+                "2": "2.64",
+                "bookmaker_name": "GGBET",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            }
+        ]
+    }
+]
