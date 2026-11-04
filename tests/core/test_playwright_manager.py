@@ -9,26 +9,37 @@ from oddsharvester.utils.proxy_manager import ProxyManager
 
 @pytest.fixture
 def mock_playwright():
-    """Mock async_playwright with browser/context/page chain."""
+    """Mock async_playwright with the persistent-context chain (afb-ODDSH-PATCHRIGHT).
+
+    The Patchright swap launches a PERSISTENT context via
+    chromium.launch_persistent_context(user_data_dir, ...) — the browser
+    object is not used for context creation any more. The persistent context
+    exposes `pages` as a real list (so `pages[0]` yields the mocked page).
+    """
     with patch("oddsharvester.core.playwright_manager.async_playwright") as mock_ap:
         playwright = AsyncMock()
-        browser = AsyncMock()
         context = AsyncMock()
         page = AsyncMock()
 
         mock_ap.return_value.start = AsyncMock(return_value=playwright)
-        playwright.chromium.launch = AsyncMock(return_value=browser)
-        browser.new_context = AsyncMock(return_value=context)
+        playwright.chromium.launch_persistent_context = AsyncMock(return_value=context)
+        context.pages = [page]
+        context.browser = AsyncMock()
         context.new_page = AsyncMock(return_value=page)
         context.add_init_script = AsyncMock()
         context.route_from_har = AsyncMock()
         page.evaluate = AsyncMock(return_value="UTC")
 
-        yield {"playwright": playwright, "browser": browser, "context": context, "page": page}
+        yield {
+            "playwright": playwright,
+            "context": context,
+            "page": page,
+        }
 
 
 @pytest.mark.asyncio
 async def test_route_from_har_called_when_env_var_set(mock_playwright, monkeypatch, tmp_path):
+    """HAR replay is preserved in the persistent path: context.route_from_har is awaited."""
     har_path = tmp_path / "snapshot.har"
     har_path.write_text("{}")
     monkeypatch.setenv("ODDSHARVESTER_HAR_REPLAY", str(har_path))
@@ -55,17 +66,18 @@ async def test_route_from_har_not_called_when_env_var_unset(mock_playwright, mon
 
 @pytest.mark.asyncio
 async def test_record_har_kwargs_when_record_env_var_set(mock_playwright, monkeypatch, tmp_path):
+    """HAR recording maps to launch_persistent_context kwargs in the persistent path."""
     har_path = tmp_path / "snapshot.har"
     monkeypatch.setenv("ODDSHARVESTER_HAR_RECORD", str(har_path))
 
     pm = PlaywrightManager()
     await pm.initialize(headless=True)
 
-    mock_playwright["browser"].new_context.assert_awaited_once()
-    call_kwargs = mock_playwright["browser"].new_context.await_args.kwargs
-    assert call_kwargs["record_har_path"] == har_path
-    assert call_kwargs["record_har_mode"] == "full"
-    assert call_kwargs["record_har_url_filter"] == "**oddsportal.com/**"
+    mock_playwright["context"]  # persistent context is the launch return value
+    launch_kwargs = mock_playwright["playwright"].chromium.launch_persistent_context.await_args.kwargs
+    assert launch_kwargs["record_har_path"] == har_path
+    assert launch_kwargs["record_har_mode"] == "full"
+    assert launch_kwargs["record_har_url_filter"] == "**oddsportal.com/**"
 
 
 @pytest.mark.asyncio
@@ -75,10 +87,10 @@ async def test_record_har_kwargs_absent_when_env_var_unset(mock_playwright, monk
     pm = PlaywrightManager()
     await pm.initialize(headless=True)
 
-    call_kwargs = mock_playwright["browser"].new_context.await_args.kwargs
-    assert "record_har_path" not in call_kwargs
-    assert "record_har_mode" not in call_kwargs
-    assert "record_har_url_filter" not in call_kwargs
+    launch_kwargs = mock_playwright["playwright"].chromium.launch_persistent_context.await_args.kwargs
+    assert "record_har_path" not in launch_kwargs
+    assert "record_har_mode" not in launch_kwargs
+    assert "record_har_url_filter" not in launch_kwargs
 
 
 @pytest.mark.asyncio
@@ -115,29 +127,34 @@ async def test_timezone_resolution_failure_falls_back_to_utc(mock_playwright):
 
 
 @pytest.mark.asyncio
-async def test_single_context_when_no_proxy_manager(mock_playwright):
+async def test_single_persistent_context_when_no_proxy_manager(mock_playwright):
+    """No proxy manager -> exactly ONE persistent context (no browser.new_context)."""
     pm = PlaywrightManager()
     await pm.initialize(headless=True)
-    mock_playwright["browser"].new_context.assert_awaited_once()
+    mock_playwright["playwright"].chromium.launch_persistent_context.assert_awaited_once()
     assert list(pm.contexts.keys()) == ["direct"]
     assert pm.non_default_context_keys() == []
 
 
 @pytest.mark.asyncio
-async def test_one_context_per_proxy_when_multi(mock_playwright):
+async def test_multi_proxy_collapses_to_single_persistent_context(mock_playwright):
+    """DOCUMENTED LIMITATION (afb-ODDSH-PATCHRIGHT): the persistent path launches
+    ONE context; multi-proxy rotation degrades — the launch carries the pool
+    sentinel proxy and rotation keys keep working via new_rotated_page's
+    fallback (per-profile dirs are a follow-up design item)."""
     proxy_manager = ProxyManager(proxy_urls=["http://a.example.com:1", "http://b.example.com:2"])
     pm = PlaywrightManager()
     await pm.initialize(headless=True, proxy_manager=proxy_manager)
-    # Two contexts created; browser launched with the per-context sentinel.
-    assert mock_playwright["browser"].new_context.await_count == 2
-    assert set(pm.contexts.keys()) == {"http://a.example.com:1", "http://b.example.com:2"}
-    launch_kwargs = mock_playwright["playwright"].chromium.launch.await_args.kwargs
+    launch_kwargs = mock_playwright["playwright"].chromium.launch_persistent_context.await_args.kwargs
     assert launch_kwargs["proxy"] == {"server": "per-context"}
-    assert len(pm.non_default_context_keys()) == 1
+    assert list(pm.contexts.keys()) == ["direct"]
+    assert pm.non_default_context_keys() == []
 
 
 @pytest.mark.asyncio
 async def test_new_rotated_page_reports_key(mock_playwright):
+    """Rotation still reports the proxy key; the page comes from the
+    persistent context (single-profile degradation, documented)."""
     proxy_manager = ProxyManager(proxy_urls=["http://a.example.com:1", "http://b.example.com:2"])
     pm = PlaywrightManager()
     await pm.initialize(headless=True, proxy_manager=proxy_manager)

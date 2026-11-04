@@ -248,6 +248,14 @@ class PlaywrightManager:
             }
             if launch_proxy:
                 context_kwargs["proxy"] = launch_proxy
+            # HAR record/replay support preserved in the persistent path
+            # (env vars ODDSHARVESTER_HAR_RECORD / ODDSHARVESTER_HAR_REPLAY).
+            har_record_path = os.environ.get(HAR_RECORD_ENV_VAR)
+            if har_record_path:
+                self.logger.info(f"HAR recording mode active: {har_record_path}")
+                context_kwargs["record_har_path"] = Path(har_record_path)
+                context_kwargs["record_har_mode"] = "full"
+                context_kwargs["record_har_url_filter"] = HAR_REPLAY_URL_PATTERN
             self.context = await self.playwright.chromium.launch_persistent_context(
                 str(user_data_dir), headless=headless, args=browser_args, **context_kwargs
             )
@@ -255,6 +263,14 @@ class PlaywrightManager:
             self._default_key = "direct"
             self.contexts = {self._default_key: self.context}
             self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
+            har_replay_path = os.environ.get(HAR_REPLAY_ENV_VAR)
+            if har_replay_path:
+                self.logger.info(f"HAR replay mode active: {har_replay_path}")
+                await self.context.route_from_har(
+                    Path(har_replay_path),
+                    url=HAR_REPLAY_URL_PATTERN,
+                    not_found="abort",
+                )
 
             # Block OneTrust scripts to prevent bot detection
             await self._block_one_trust_scripts(self.page)
@@ -378,7 +394,11 @@ class PlaywrightManager:
         entry = self._proxy_manager.next_proxy()
         if entry is None:
             raise AllProxiesExhaustedError("All proxies are blacklisted; cannot open a new page.")
-        page = await self.contexts[entry.key].new_page()
+        # Persistent-context mode collapses multi-proxy contexts to a single
+        # profile: rotation still reports the proxy key, but pages come from
+        # the persistent context (documented limitation; per-profile dirs are
+        # a follow-up design item).
+        page = await self.contexts.get(entry.key, self.context).new_page()
         return page, entry.key
 
     def report_page_result(self, key: str, is_proxy_failure: bool) -> None:
