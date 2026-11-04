@@ -1,0 +1,84 @@
+[
+    {
+        "scraped_date": "2026-11-04 11:16:17 UTC",
+        "match_date": "2025-04-13 14:30:00 UTC",
+        "season": null,
+        "match_link": "https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/newcastle-utd-p6ahwuwJ/#KOZApOR0",
+        "home_team": "Newcastle",
+        "away_team": "Manchester Utd",
+        "league_name": "Premier League",
+        "home_score": "4",
+        "away_score": "1",
+        "partial_results": "(1:1, 3:0)",
+        "venue": null,
+        "venue_town": null,
+        "venue_country": null,
+        "match_info": null,
+        "1x2_market": [
+            {
+                "1": "1.66",
+                "X": "4.40",
+                "2": "5.03",
+                "bookmaker_name": "1xBet",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.62",
+                "X": "4.30",
+                "2": "4.92",
+                "bookmaker_name": "22Bet",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.55",
+                "X": "4.30",
+                "2": "5.25",
+                "bookmaker_name": "bet-at-home",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.60",
+                "X": "4.33",
+                "2": "5.25",
+                "bookmaker_name": "bet365",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.60",
+                "X": "4.30",
+                "2": "5.00",
+                "bookmaker_name": "Betfury",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.60",
+                "X": "4.45",
+                "2": "5.50",
+                "bookmaker_name": "Betsson",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.60",
+                "X": "4.39",
+                "2": "5.54",
+                "bookmaker_name": "Cloudbet",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            },
+            {
+                "1": "1.64",
+                "X": "4.28",
+                "2": "5.26",
+                "bookmaker_name": "GGBET",
+                "period": "FullTime",
+                "submarket_name": "1X2"
+            }
+        ]
+    }
+]

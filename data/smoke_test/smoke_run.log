@@ -1,0 +1,1390 @@
+2026-11-04 19:01:38,702 - root - INFO - Logging initialized. Log level: INFO (No file output)
+2026-11-04 19:01:38,775 - oddsharvester.utils.utils - INFO - No period specified, using default for football: 'full_time'
+2026-11-04 19:01:38,776 - ScraperApp - INFO - Starting scraper with parameters: command=scrape_historic, match_links=None, sport=football, date=None, leagues=['england-premier-league'], seasons=['2024-2025'], markets=['1x2'], max_pages=None, proxy_url=(), browser_user_agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36, browser_locale_timezone=en-GB, browser_timezone_id=Europe/London, scrape_odds_history=False, target_bookmaker=None, headless=True, preview_submarkets_only=False, bookies_filter=all, period=None, base_url=None, local_kickoff=False, checkpoint_file_path=data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:01:38,776 - ProxyManager - INFO - No proxy provided, running without proxy.
+2026-11-04 19:01:38,780 - PlaywrightManager - INFO - Starting Playwright...
+2026-11-04 19:01:42,779 - PlaywrightManager - INFO - Playwright initialized successfully.
+2026-11-04 19:01:42,779 - ScraperApp - INFO - 
+                Scraping historical odds for sport=football, leagues=['england-premier-league'], seasons=2024-2025, markets=['1x2'], scrape_odds_history=False, target_bookmaker=None, max_pages=None
+            
+2026-11-04 19:01:42,780 - OddsPortalScraper - INFO - Starting historic scraping for football - england-premier-league - 2024-2025
+2026-11-04 19:01:42,780 - OddsPortalScraper - INFO - Base URL: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/
+2026-11-04 19:01:42,780 - OddsPortalScraper - INFO - Max pages parameter: None
+2026-11-04 19:01:42,780 - OddsPortalScraper - INFO - Setting consent cookies in browser context...
+2026-11-04 19:01:42,788 - OddsPortalScraper - INFO - Blocking OneTrust scripts to prevent bot detection...
+2026-11-04 19:01:42,791 - OddsPortalScraper - INFO - Navigating to base URL...
+2026-11-04 19:01:50,979 - OddsPortalScraper - INFO - Setting odds format: Decimal Odds
+2026-11-04 19:01:51,776 - OddsPortalScraper - INFO - Current odds format detected: Decimal Odds
+2026-11-04 19:01:51,776 - OddsPortalScraper - INFO - Odds format is already set to 'Decimal Odds'. Skipping.
+2026-11-04 19:01:52,088 - BrowserHelper - INFO - Checking for cookie banner...
+2026-11-04 19:01:52,876 - BrowserHelper - INFO - No cookie banner detected.
+2026-11-04 19:01:56,821 - CookieDismisser - INFO - Checking for cookie banner...
+2026-11-04 19:02:06,827 - CookieDismisser - INFO - No cookie banner detected.
+2026-11-04 19:02:06,827 - OddsPortalScraper - INFO - Step 1: Analyzing pagination information...
+2026-11-04 19:02:06,827 - OddsPortalScraper - INFO - Analyzing pagination information...
+2026-11-04 19:02:06,920 - OddsPortalScraper - INFO - Raw pagination pages found: [1, 2, 3, 4, 5, 6, 7, 8]
+2026-11-04 19:02:06,920 - OddsPortalScraper - INFO - Pagination HTML showed [1, 2, 3, 4, 5, 6, 7, 8], filling to contiguous range 1..8 (8 pages)
+2026-11-04 19:02:06,921 - OddsPortalScraper - INFO - Will scrape all 8 pages (limit: 50)
+2026-11-04 19:02:06,921 - OddsPortalScraper - INFO - Final pages to scrape: [1, 2, 3, 4, 5, 6, 7, 8]
+2026-11-04 19:02:06,921 - OddsPortalScraper - INFO - Step 2: Collecting match links from all pages...
+2026-11-04 19:02:06,921 - OddsPortalScraper - INFO - Starting collection of match links from a floor of 8 page(s)
+2026-11-04 19:02:06,921 - OddsPortalScraper - INFO - Starting collection of match links from 8 pages
+2026-11-04 19:02:06,921 - OddsPortalScraper - INFO - Season filtering: 2024-2025
+2026-11-04 19:02:06,921 - OddsPortalScraper - INFO - Pages to process: [1, 2, 3, 4, 5, 6, 7, 8]
+2026-11-04 19:02:06,921 - OddsPortalScraper - INFO - Processing page 1 (frontier: 8, limit: 50)
+2026-11-04 19:02:07,001 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/1
+2026-11-04 19:02:14,970 - OddsPortalScraper - INFO - Scrolling page 1 to load all matches...
+2026-11-04 19:02:14,970 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:02:15,090 - PageScroller - INFO - Initial element count: 51
+2026-11-04 19:02:15,090 - PageScroller - INFO - Initial page height: 26422
+2026-11-04 19:02:17,280 - PageScroller - INFO - Current element count: 51 (height: 26440)
+2026-11-04 19:02:19,591 - PageScroller - INFO - Current element count: 51 (height: 26336)
+2026-11-04 19:02:22,187 - PageScroller - INFO - Current element count: 51 (height: 26332)
+2026-11-04 19:02:24,586 - PageScroller - INFO - Current element count: 51 (height: 26316)
+2026-11-04 19:02:26,876 - PageScroller - INFO - Current element count: 51 (height: 26308)
+2026-11-04 19:02:29,081 - PageScroller - INFO - Current element count: 51 (height: 26292)
+2026-11-04 19:02:31,297 - PageScroller - INFO - Current element count: 51 (height: 26284)
+2026-11-04 19:02:33,589 - PageScroller - INFO - Current element count: 51 (height: 26272)
+2026-11-04 19:02:35,885 - PageScroller - INFO - Current element count: 51 (height: 26260)
+2026-11-04 19:02:38,183 - PageScroller - INFO - Current element count: 51 (height: 26252)
+2026-11-04 19:02:40,294 - PageScroller - INFO - Current element count: 51 (height: 26236)
+2026-11-04 19:02:42,500 - PageScroller - INFO - Current element count: 51 (height: 26228)
+2026-11-04 19:02:44,777 - PageScroller - INFO - Current element count: 51 (height: 26220)
+2026-11-04 19:02:46,878 - PageScroller - INFO - Current element count: 51 (height: 26208)
+2026-11-04 19:02:46,878 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:02:46,878 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 1
+2026-11-04 19:02:46,878 - OddsPortalScraper - INFO - Extracting match links from page 1...
+2026-11-04 19:02:47,323 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-11-04 19:02:47,325 - OddsPortalScraper - INFO - Extracted 51 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:02:47,443 - OddsPortalScraper - INFO - Extracted 51 links from page 1
+2026-11-04 19:02:47,480 - OddsPortalScraper - INFO - Processing page 2 (frontier: 8, limit: 50)
+2026-11-04 19:02:47,586 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/2
+2026-11-04 19:02:56,377 - OddsPortalScraper - INFO - Scrolling page 2 to load all matches...
+2026-11-04 19:02:56,377 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:02:56,598 - PageScroller - INFO - Initial element count: 51
+2026-11-04 19:02:56,599 - PageScroller - INFO - Initial page height: 26424
+2026-11-04 19:02:58,899 - PageScroller - INFO - Current element count: 51 (height: 26442)
+2026-11-04 19:03:01,088 - PageScroller - INFO - Current element count: 51 (height: 26338)
+2026-11-04 19:03:03,280 - PageScroller - INFO - Current element count: 51 (height: 26332)
+2026-11-04 19:03:05,382 - PageScroller - INFO - Current element count: 51 (height: 26320)
+2026-11-04 19:03:07,478 - PageScroller - INFO - Current element count: 51 (height: 26308)
+2026-11-04 19:03:09,578 - PageScroller - INFO - Current element count: 51 (height: 26296)
+2026-11-04 19:03:11,688 - PageScroller - INFO - Current element count: 51 (height: 26288)
+2026-11-04 19:03:13,879 - PageScroller - INFO - Current element count: 51 (height: 26276)
+2026-11-04 19:03:15,980 - PageScroller - INFO - Current element count: 51 (height: 26264)
+2026-11-04 19:03:18,078 - PageScroller - INFO - Current element count: 51 (height: 26252)
+2026-11-04 19:03:20,307 - PageScroller - INFO - Current element count: 51 (height: 26244)
+2026-11-04 19:03:22,400 - PageScroller - INFO - Current element count: 51 (height: 26236)
+2026-11-04 19:03:24,579 - PageScroller - INFO - Current element count: 51 (height: 26224)
+2026-11-04 19:03:26,799 - PageScroller - INFO - Current element count: 51 (height: 26212)
+2026-11-04 19:03:26,799 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:03:26,799 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 2
+2026-11-04 19:03:26,799 - OddsPortalScraper - INFO - Extracting match links from page 2...
+2026-11-04 19:03:28,198 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-11-04 19:03:28,198 - OddsPortalScraper - INFO - Extracted 51 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:03:28,490 - OddsPortalScraper - INFO - Extracted 51 links from page 2
+2026-11-04 19:03:28,499 - OddsPortalScraper - INFO - Processing page 3 (frontier: 8, limit: 50)
+2026-11-04 19:03:28,685 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/3
+2026-11-04 19:03:38,710 - OddsPortalScraper - INFO - Scrolling page 3 to load all matches...
+2026-11-04 19:03:38,710 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:03:39,197 - PageScroller - INFO - Initial element count: 51
+2026-11-04 19:03:39,197 - PageScroller - INFO - Initial page height: 26416
+2026-11-04 19:03:41,975 - PageScroller - INFO - Current element count: 51 (height: 26434)
+2026-11-04 19:03:44,277 - PageScroller - INFO - Current element count: 51 (height: 26338)
+2026-11-04 19:03:46,392 - PageScroller - INFO - Current element count: 51 (height: 26332)
+2026-11-04 19:03:48,591 - PageScroller - INFO - Current element count: 51 (height: 26316)
+2026-11-04 19:03:50,987 - PageScroller - INFO - Current element count: 51 (height: 26308)
+2026-11-04 19:03:53,278 - PageScroller - INFO - Current element count: 51 (height: 26296)
+2026-11-04 19:03:55,378 - PageScroller - INFO - Current element count: 51 (height: 26284)
+2026-11-04 19:03:57,479 - PageScroller - INFO - Current element count: 51 (height: 26276)
+2026-11-04 19:03:59,581 - PageScroller - INFO - Current element count: 51 (height: 26260)
+2026-11-04 19:04:01,682 - PageScroller - INFO - Current element count: 51 (height: 26252)
+2026-11-04 19:04:03,796 - PageScroller - INFO - Current element count: 51 (height: 26244)
+2026-11-04 19:04:05,879 - PageScroller - INFO - Current element count: 51 (height: 26228)
+2026-11-04 19:04:07,977 - PageScroller - INFO - Current element count: 51 (height: 26220)
+2026-11-04 19:04:10,080 - PageScroller - INFO - Current element count: 51 (height: 26212)
+2026-11-04 19:04:10,080 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:04:10,080 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 3
+2026-11-04 19:04:10,080 - OddsPortalScraper - INFO - Extracting match links from page 3...
+2026-11-04 19:04:10,509 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-11-04 19:04:10,510 - OddsPortalScraper - INFO - Extracted 51 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:04:10,702 - OddsPortalScraper - INFO - Extracted 51 links from page 3
+2026-11-04 19:04:10,712 - OddsPortalScraper - INFO - Processing page 4 (frontier: 8, limit: 50)
+2026-11-04 19:04:10,877 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/4
+2026-11-04 19:04:20,175 - OddsPortalScraper - INFO - Scrolling page 4 to load all matches...
+2026-11-04 19:04:20,175 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:04:20,389 - PageScroller - INFO - Initial element count: 51
+2026-11-04 19:04:20,389 - PageScroller - INFO - Initial page height: 26336
+2026-11-04 19:04:22,580 - PageScroller - INFO - Current element count: 51 (height: 26354)
+2026-11-04 19:04:24,678 - PageScroller - INFO - Current element count: 51 (height: 26250)
+2026-11-04 19:04:26,892 - PageScroller - INFO - Current element count: 51 (height: 26244)
+2026-11-04 19:04:29,186 - PageScroller - INFO - Current element count: 51 (height: 26232)
+2026-11-04 19:04:31,299 - PageScroller - INFO - Current element count: 51 (height: 26220)
+2026-11-04 19:04:33,586 - PageScroller - INFO - Current element count: 51 (height: 26208)
+2026-11-04 19:04:36,078 - PageScroller - INFO - Current element count: 51 (height: 26200)
+2026-11-04 19:04:38,281 - PageScroller - INFO - Current element count: 51 (height: 26188)
+2026-11-04 19:04:40,478 - PageScroller - INFO - Current element count: 51 (height: 26176)
+2026-11-04 19:04:42,695 - PageScroller - INFO - Current element count: 51 (height: 26164)
+2026-11-04 19:04:44,877 - PageScroller - INFO - Current element count: 51 (height: 26156)
+2026-11-04 19:04:46,981 - PageScroller - INFO - Current element count: 51 (height: 26144)
+2026-11-04 19:04:49,077 - PageScroller - INFO - Current element count: 51 (height: 26132)
+2026-11-04 19:04:51,179 - PageScroller - INFO - Current element count: 51 (height: 26124)
+2026-11-04 19:04:51,179 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:04:51,179 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 4
+2026-11-04 19:04:51,179 - OddsPortalScraper - INFO - Extracting match links from page 4...
+2026-11-04 19:04:51,583 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-11-04 19:04:51,584 - OddsPortalScraper - INFO - Extracted 51 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:04:51,703 - OddsPortalScraper - INFO - Extracted 51 links from page 4
+2026-11-04 19:04:51,713 - OddsPortalScraper - INFO - Processing page 5 (frontier: 8, limit: 50)
+2026-11-04 19:04:51,879 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/5
+2026-11-04 19:05:02,641 - OddsPortalScraper - INFO - Scrolling page 5 to load all matches...
+2026-11-04 19:05:02,641 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:05:02,722 - PageScroller - INFO - Initial element count: 51
+2026-11-04 19:05:02,722 - PageScroller - INFO - Initial page height: 26240
+2026-11-04 19:05:04,878 - PageScroller - INFO - Current element count: 51 (height: 26258)
+2026-11-04 19:05:06,998 - PageScroller - INFO - Current element count: 51 (height: 26162)
+2026-11-04 19:05:09,197 - PageScroller - INFO - Current element count: 51 (height: 26156)
+2026-11-04 19:05:11,477 - PageScroller - INFO - Current element count: 51 (height: 26144)
+2026-11-04 19:05:13,599 - PageScroller - INFO - Current element count: 51 (height: 26132)
+2026-11-04 19:05:15,780 - PageScroller - INFO - Current element count: 51 (height: 26124)
+2026-11-04 19:05:17,877 - PageScroller - INFO - Current element count: 51 (height: 26112)
+2026-11-04 19:05:19,985 - PageScroller - INFO - Current element count: 51 (height: 26100)
+2026-11-04 19:05:22,077 - PageScroller - INFO - Current element count: 51 (height: 26088)
+2026-11-04 19:05:24,179 - PageScroller - INFO - Current element count: 51 (height: 26076)
+2026-11-04 19:05:26,381 - PageScroller - INFO - Current element count: 51 (height: 26068)
+2026-11-04 19:05:28,579 - PageScroller - INFO - Current element count: 51 (height: 26052)
+2026-11-04 19:05:30,775 - PageScroller - INFO - Current element count: 51 (height: 26044)
+2026-11-04 19:05:33,185 - PageScroller - INFO - Current element count: 51 (height: 26032)
+2026-11-04 19:05:33,185 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:05:33,185 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 5
+2026-11-04 19:05:33,185 - OddsPortalScraper - INFO - Extracting match links from page 5...
+2026-11-04 19:05:34,889 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-11-04 19:05:34,890 - OddsPortalScraper - INFO - Extracted 51 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:05:35,479 - OddsPortalScraper - INFO - Extracted 51 links from page 5
+2026-11-04 19:05:35,489 - OddsPortalScraper - INFO - Processing page 6 (frontier: 8, limit: 50)
+2026-11-04 19:05:35,781 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/6
+2026-11-04 19:05:46,999 - OddsPortalScraper - INFO - Scrolling page 6 to load all matches...
+2026-11-04 19:05:46,999 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:05:47,392 - PageScroller - INFO - Initial element count: 51
+2026-11-04 19:05:47,392 - PageScroller - INFO - Initial page height: 26240
+2026-11-04 19:05:49,780 - PageScroller - INFO - Current element count: 51 (height: 26258)
+2026-11-04 19:05:51,993 - PageScroller - INFO - Current element count: 51 (height: 26162)
+2026-11-04 19:05:54,892 - PageScroller - INFO - Current element count: 51 (height: 26156)
+2026-11-04 19:05:57,088 - PageScroller - INFO - Current element count: 51 (height: 26140)
+2026-11-04 19:05:59,279 - PageScroller - INFO - Current element count: 51 (height: 26132)
+2026-11-04 19:06:01,488 - PageScroller - INFO - Current element count: 51 (height: 26120)
+2026-11-04 19:06:03,581 - PageScroller - INFO - Current element count: 51 (height: 26108)
+2026-11-04 19:06:05,723 - PageScroller - INFO - Current element count: 51 (height: 26100)
+2026-11-04 19:06:07,883 - PageScroller - INFO - Current element count: 51 (height: 26084)
+2026-11-04 19:06:09,980 - PageScroller - INFO - Current element count: 51 (height: 26076)
+2026-11-04 19:06:12,091 - PageScroller - INFO - Current element count: 51 (height: 26068)
+2026-11-04 19:06:14,176 - PageScroller - INFO - Current element count: 51 (height: 26056)
+2026-11-04 19:06:16,279 - PageScroller - INFO - Current element count: 51 (height: 26048)
+2026-11-04 19:06:18,396 - PageScroller - INFO - Current element count: 51 (height: 26036)
+2026-11-04 19:06:18,396 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:06:18,396 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 6
+2026-11-04 19:06:18,396 - OddsPortalScraper - INFO - Extracting match links from page 6...
+2026-11-04 19:06:19,591 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-11-04 19:06:19,591 - OddsPortalScraper - INFO - Extracted 51 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:06:19,818 - OddsPortalScraper - INFO - Extracted 51 links from page 6
+2026-11-04 19:06:19,889 - OddsPortalScraper - INFO - Processing page 7 (frontier: 8, limit: 50)
+2026-11-04 19:06:20,083 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/7
+2026-11-04 19:06:29,575 - OddsPortalScraper - INFO - Scrolling page 7 to load all matches...
+2026-11-04 19:06:29,576 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:06:29,796 - PageScroller - INFO - Initial element count: 51
+2026-11-04 19:06:29,796 - PageScroller - INFO - Initial page height: 26064
+2026-11-04 19:06:32,281 - PageScroller - INFO - Current element count: 51 (height: 26082)
+2026-11-04 19:06:34,478 - PageScroller - INFO - Current element count: 51 (height: 25986)
+2026-11-04 19:06:36,678 - PageScroller - INFO - Current element count: 51 (height: 25980)
+2026-11-04 19:06:38,878 - PageScroller - INFO - Current element count: 51 (height: 25968)
+2026-11-04 19:06:41,002 - PageScroller - INFO - Current element count: 51 (height: 25956)
+2026-11-04 19:06:43,677 - PageScroller - INFO - Current element count: 51 (height: 25948)
+2026-11-04 19:06:45,879 - PageScroller - INFO - Current element count: 51 (height: 25936)
+2026-11-04 19:06:47,993 - PageScroller - INFO - Current element count: 51 (height: 25924)
+2026-11-04 19:06:50,177 - PageScroller - INFO - Current element count: 51 (height: 25912)
+2026-11-04 19:06:52,294 - PageScroller - INFO - Current element count: 51 (height: 25900)
+2026-11-04 19:06:54,495 - PageScroller - INFO - Current element count: 51 (height: 25892)
+2026-11-04 19:06:56,986 - PageScroller - INFO - Current element count: 51 (height: 25876)
+2026-11-04 19:06:59,396 - PageScroller - INFO - Current element count: 51 (height: 25868)
+2026-11-04 19:07:01,594 - PageScroller - INFO - Current element count: 51 (height: 25860)
+2026-11-04 19:07:01,594 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:07:01,595 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 7
+2026-11-04 19:07:01,595 - OddsPortalScraper - INFO - Extracting match links from page 7...
+2026-11-04 19:07:02,014 - OddsPortalScraper - INFO - Found 51 event rows.
+2026-11-04 19:07:02,014 - OddsPortalScraper - INFO - Extracted 51 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:07:02,281 - OddsPortalScraper - INFO - Extracted 51 links from page 7
+2026-11-04 19:07:02,295 - OddsPortalScraper - INFO - Processing page 8 (frontier: 8, limit: 50)
+2026-11-04 19:07:02,406 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/8
+2026-11-04 19:07:11,297 - OddsPortalScraper - INFO - Scrolling page 8 to load all matches...
+2026-11-04 19:07:11,297 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:07:11,476 - PageScroller - INFO - Initial element count: 31
+2026-11-04 19:07:11,476 - PageScroller - INFO - Initial page height: 18712
+2026-11-04 19:07:13,583 - PageScroller - INFO - Current element count: 31 (height: 18730)
+2026-11-04 19:07:15,684 - PageScroller - INFO - Current element count: 31 (height: 18634)
+2026-11-04 19:07:17,782 - PageScroller - INFO - Current element count: 31 (height: 18628)
+2026-11-04 19:07:19,988 - PageScroller - INFO - Current element count: 31 (height: 18612)
+2026-11-04 19:07:22,087 - PageScroller - INFO - Current element count: 31 (height: 18604)
+2026-11-04 19:07:24,189 - PageScroller - INFO - Current element count: 31 (height: 18592)
+2026-11-04 19:07:26,581 - PageScroller - INFO - Current element count: 31 (height: 18580)
+2026-11-04 19:07:28,882 - PageScroller - INFO - Current element count: 31 (height: 18572)
+2026-11-04 19:07:31,177 - PageScroller - INFO - Current element count: 31 (height: 18556)
+2026-11-04 19:07:33,782 - PageScroller - INFO - Current element count: 31 (height: 18548)
+2026-11-04 19:07:36,177 - PageScroller - INFO - Current element count: 31 (height: 18536)
+2026-11-04 19:07:38,387 - PageScroller - INFO - Current element count: 31 (height: 18524)
+2026-11-04 19:07:40,783 - PageScroller - INFO - Current element count: 31 (height: 18516)
+2026-11-04 19:07:43,188 - PageScroller - INFO - Current element count: 31 (height: 18504)
+2026-11-04 19:07:43,188 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:07:43,188 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 8
+2026-11-04 19:07:43,188 - OddsPortalScraper - INFO - Extracting match links from page 8...
+2026-11-04 19:07:44,106 - OddsPortalScraper - INFO - Found 31 event rows.
+2026-11-04 19:07:44,106 - OddsPortalScraper - INFO - Extracted 31 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:07:44,492 - OddsPortalScraper - WARNING - Page 8 returned 31 of 50 links; re-fetching it.
+2026-11-04 19:07:49,508 - OddsPortalScraper - INFO - Processing page 8 (frontier: 8, limit: 50)
+2026-11-04 19:07:49,596 - OddsPortalScraper - INFO - Navigating to: https://www.oddsportal.com/football/england/premier-league-2024-2025/results/#page/8
+2026-11-04 19:07:57,673 - OddsPortalScraper - INFO - Scrolling page 8 to load all matches...
+2026-11-04 19:07:57,673 - PageScroller - INFO - Will scroll to the bottom of the page to load all content.
+2026-11-04 19:07:57,792 - PageScroller - INFO - Initial element count: 31
+2026-11-04 19:07:57,792 - PageScroller - INFO - Initial page height: 18712
+2026-11-04 19:07:59,984 - PageScroller - INFO - Current element count: 31 (height: 18730)
+2026-11-04 19:08:02,079 - PageScroller - INFO - Current element count: 31 (height: 18634)
+2026-11-04 19:08:04,191 - PageScroller - INFO - Current element count: 31 (height: 18628)
+2026-11-04 19:08:06,290 - PageScroller - INFO - Current element count: 31 (height: 18612)
+2026-11-04 19:08:08,420 - PageScroller - INFO - Current element count: 31 (height: 18604)
+2026-11-04 19:08:10,580 - PageScroller - INFO - Current element count: 31 (height: 18592)
+2026-11-04 19:08:12,885 - PageScroller - INFO - Current element count: 31 (height: 18580)
+2026-11-04 19:08:15,286 - PageScroller - INFO - Current element count: 31 (height: 18572)
+2026-11-04 19:08:17,477 - PageScroller - INFO - Current element count: 31 (height: 18556)
+2026-11-04 19:08:19,582 - PageScroller - INFO - Current element count: 31 (height: 18548)
+2026-11-04 19:08:21,683 - PageScroller - INFO - Current element count: 31 (height: 18536)
+2026-11-04 19:08:23,895 - PageScroller - INFO - Current element count: 31 (height: 18524)
+2026-11-04 19:08:26,278 - PageScroller - INFO - Current element count: 31 (height: 18516)
+2026-11-04 19:08:28,787 - PageScroller - INFO - Current element count: 31 (height: 18504)
+2026-11-04 19:08:28,787 - PageScroller - INFO - Reached scrolling timeout. Stopping scroll.
+2026-11-04 19:08:28,788 - OddsPortalScraper - WARNING - Scrolling may not have completed for page 8
+2026-11-04 19:08:28,788 - OddsPortalScraper - INFO - Extracting match links from page 8...
+2026-11-04 19:08:29,699 - OddsPortalScraper - INFO - Found 31 event rows.
+2026-11-04 19:08:29,699 - OddsPortalScraper - INFO - Extracted 31 unique match links after season filtering (2024-2025, filtered out 0 rows, 0 unparseable headers).
+2026-11-04 19:08:30,004 - OddsPortalScraper - WARNING - Page 8 returned 31 of 50 links after 2 attempts; treating it as failed.
+2026-11-04 19:08:30,077 - OddsPortalScraper - INFO - Collection Summary:
+2026-11-04 19:08:30,077 - OddsPortalScraper - INFO -    - Pages planned from widget: 8
+2026-11-04 19:08:30,077 - OddsPortalScraper - INFO -    - Pages actually walked: 8
+2026-11-04 19:08:30,077 - OddsPortalScraper - INFO -    - Successful pages: 7
+2026-11-04 19:08:30,077 - OddsPortalScraper - INFO -    - Failed pages: 1
+2026-11-04 19:08:30,077 - OddsPortalScraper - INFO -    - Total links found: 388
+2026-11-04 19:08:30,077 - OddsPortalScraper - INFO -    - Unique links: 386
+2026-11-04 19:08:30,077 - OddsPortalScraper - WARNING - Failed to collect links from pages: [8]
+2026-11-04 19:08:30,077 - OddsPortalScraper - WARNING - Failed to collect links from pages: [8]
+2026-11-04 19:08:30,078 - OddsPortalScraper - INFO - Step 3: Extracting odds from collected match links...
+2026-11-04 19:08:30,078 - OddsPortalScraper - INFO - Total unique matches to process: 386
+2026-11-04 19:08:30,078 - OddsPortalScraper - INFO - Starting to scrape odds for 386 match links...
+2026-11-04 19:08:30,188 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/everton-KluSTr9s/#v3JHq2Wp
+2026-11-04 19:08:31,578 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/manchester-united-ppjDR086/#pOnfE84l
+2026-11-04 19:08:32,384 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/leicester-KrrdAMyI/#44RKa9ke
+2026-11-04 19:08:40,781 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:08:41,477 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:08:41,584 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:08:42,497 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:08:42,497 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:08:42,497 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:08:42,497 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:08:42,677 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:08:44,181 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:08:44,181 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:08:44,182 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:08:44,182 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:08:44,379 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:08:44,379 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:08:44,391 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:08:44,790 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:08:45,780 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:08:45,781 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:08:45,781 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:08:45,781 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:08:45,789 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:08:45,789 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:08:46,499 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:08:46,499 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:08:47,383 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:08:47,384 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:08:48,791 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:08:48,791 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:08:49,502 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:08:49,502 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:08:50,090 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:08:51,289 - OddsParser - INFO - Successfully parsed odds for 8 bookmakers.
+2026-11-04 19:08:51,289 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/everton-KluSTr9s/#v3JHq2Wp (attempts: 1)
+2026-11-04 19:08:51,375 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:08:51,375 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:08:51,375 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:08:52,196 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:08:52,883 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:08:52,883 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/manchester-united-ppjDR086/#pOnfE84l (attempts: 1)
+2026-11-04 19:08:52,883 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:08:52,884 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:08:52,884 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:08:53,075 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:08:53,579 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:08:53,579 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/leicester-KrrdAMyI/#44RKa9ke (attempts: 1)
+2026-11-04 19:08:53,579 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:08:53,579 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:08:53,579 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:08:53,585 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/wolves-j3Azpf5d/#4vrUQolf
+2026-11-04 19:08:54,885 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/west-ham-Cxq57r8g/#6Ly4WtY0
+2026-11-04 19:08:55,978 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/tottenham-UDg08Ohm/#OUZLS7Js
+2026-11-04 19:09:09,578 - OddsPortalScraper - WARNING - Match view hydration attempt 1/3 timed out for https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/wolves-j3Azpf5d/#4vrUQolf
+2026-11-04 19:09:10,575 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:10,679 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:11,579 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:09:11,583 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:09:12,399 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:09:12,399 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:09:12,399 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:09:12,399 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:09:12,988 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:09:12,988 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:09:12,988 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:09:12,988 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:09:13,006 - OddsPortalScraper - WARNING - Match view hydration attempt 1/3 timed out for https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/tottenham-UDg08Ohm/#OUZLS7Js
+2026-11-04 19:09:14,775 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:09:14,776 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:09:14,881 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:09:14,881 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:09:15,180 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:15,682 - SelectionManager - ERROR - bookies-filter target element not found for: All Bookies
+2026-11-04 19:09:15,963 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:09:15,963 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:09:15,963 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:09:15,963 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:09:16,481 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:09:16,481 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:09:17,784 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:09:17,784 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:09:17,883 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:09:17,883 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:09:19,483 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:09:19,484 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:09:19,883 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:09:20,014 - OddsParser - INFO - Successfully parsed odds for 7 bookmakers.
+2026-11-04 19:09:20,014 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/west-ham-Cxq57r8g/#6Ly4WtY0 (attempts: 1)
+2026-11-04 19:09:20,014 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:20,014 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:09:20,014 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:20,186 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:09:20,291 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:09:20,291 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/wolves-j3Azpf5d/#4vrUQolf (attempts: 1)
+2026-11-04 19:09:20,292 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:20,292 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:09:20,292 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:21,478 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/newcastle-utd-p6ahwuwJ/#4Q2eCnZ0
+2026-11-04 19:09:21,598 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/liverpool-lId4TMwf/#lh1OJUtR
+2026-11-04 19:09:21,721 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:09:21,894 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:09:21,894 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/tottenham-UDg08Ohm/#OUZLS7Js (attempts: 1)
+2026-11-04 19:09:21,895 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:21,895 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:09:21,895 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:24,776 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/nottingham-UsushcZr/#O6Rja2XN
+2026-11-04 19:09:31,077 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:31,980 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:09:32,085 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:33,676 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:09:33,677 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:09:33,677 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:09:33,677 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:09:33,885 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:09:35,880 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:09:35,881 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:09:35,881 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:09:35,881 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:09:36,086 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:09:36,086 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:09:38,079 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:09:38,079 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:09:38,188 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:38,483 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:09:39,480 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:09:39,480 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:09:39,480 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:09:39,480 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:09:39,482 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:09:39,482 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:09:41,084 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:09:41,084 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:09:41,190 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:09:41,190 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:09:41,701 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:09:42,200 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:09:42,200 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/liverpool-lId4TMwf/#lh1OJUtR (attempts: 1)
+2026-11-04 19:09:42,201 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:42,201 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:09:42,201 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:43,586 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:09:43,989 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:09:43,990 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/newcastle-utd-p6ahwuwJ/#4Q2eCnZ0 (attempts: 1)
+2026-11-04 19:09:43,990 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:43,990 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:09:43,990 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:44,277 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:09:44,277 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:09:44,285 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/ipswich-thqhB2MB/west-ham-Cxq57r8g/#hQ7FLjCE
+2026-11-04 19:09:46,378 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/ipswich-thqhB2MB/newcastle-utd-p6ahwuwJ/#jXiwLwBs
+2026-11-04 19:09:47,390 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:09:48,381 - OddsParser - INFO - Successfully parsed odds for 8 bookmakers.
+2026-11-04 19:09:48,382 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/nottingham-UsushcZr/#O6Rja2XN (attempts: 1)
+2026-11-04 19:09:48,382 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:48,382 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:09:48,382 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:09:50,681 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/wolves-j3Azpf5d/#boy65vMG
+2026-11-04 19:09:53,982 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:54,378 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:09:55,502 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:09:55,502 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:09:55,502 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:09:55,502 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:09:57,786 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:09:57,786 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:09:58,591 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:58,975 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:09:59,192 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:09:59,706 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:09:59,706 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:09:59,706 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:09:59,706 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:09:59,791 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:10:00,503 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:10:00,503 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:10:00,503 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:10:00,503 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:10:00,677 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:10:00,677 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:10:00,882 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:00,882 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:01,683 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:10:01,684 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:10:03,076 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:03,587 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:10:03,587 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/ipswich-thqhB2MB/west-ham-Cxq57r8g/#hQ7FLjCE (attempts: 1)
+2026-11-04 19:10:03,588 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:03,588 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:03,588 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:03,681 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:03,682 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:04,687 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:04,688 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:05,181 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/brighton-2XrRecc3/#E9ws2J5e
+2026-11-04 19:10:05,811 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:06,101 - OddsParser - INFO - Successfully parsed odds for 8 bookmakers.
+2026-11-04 19:10:06,101 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/ipswich-thqhB2MB/newcastle-utd-p6ahwuwJ/#jXiwLwBs (attempts: 1)
+2026-11-04 19:10:06,102 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:06,102 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:06,102 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:08,488 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/manchester-city-Wtn9Stg0/#hQP2pfvg
+2026-11-04 19:10:08,586 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:09,098 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:10:09,098 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/wolves-j3Azpf5d/#boy65vMG (attempts: 1)
+2026-11-04 19:10:09,099 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:09,099 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:09,099 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:11,283 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/fulham-69ZiU2Om/#2ai3oJUp
+2026-11-04 19:10:14,777 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:10:15,881 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:10:17,079 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:10:17,079 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:10:17,079 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:10:17,079 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:10:19,576 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:10:19,576 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:10:20,282 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:10:20,984 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:10:22,190 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:10:22,190 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:10:22,190 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:10:22,190 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:10:22,279 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:10:22,588 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:22,588 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:22,592 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:10:24,187 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:10:24,187 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:10:24,187 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:10:24,187 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:10:24,193 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:10:24,275 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:10:24,980 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:25,688 - OddsParser - INFO - Successfully parsed odds for 7 bookmakers.
+2026-11-04 19:10:25,688 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/brighton-2XrRecc3/#E9ws2J5e (attempts: 1)
+2026-11-04 19:10:25,688 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:25,688 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:25,689 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:25,886 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:10:25,886 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:10:26,902 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/newcastle-utd-p6ahwuwJ/#l0Zi1FqS
+2026-11-04 19:10:27,278 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:27,278 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:28,889 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:28,889 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:30,080 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:30,980 - OddsParser - INFO - Successfully parsed odds for 8 bookmakers.
+2026-11-04 19:10:30,980 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/manchester-city-Wtn9Stg0/#hQP2pfvg (attempts: 1)
+2026-11-04 19:10:30,981 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:30,981 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:30,981 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:31,582 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:32,286 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:10:32,286 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/fulham-69ZiU2Om/#2ai3oJUp (attempts: 1)
+2026-11-04 19:10:32,286 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:32,287 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:32,287 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:32,891 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/nottingham-UsushcZr/west-ham-Cxq57r8g/#b7OC1VKr
+2026-11-04 19:10:34,375 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/southampton-WdKOwxDM/#K0PE3IjT
+2026-11-04 19:10:35,883 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:10:36,090 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:10:37,975 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:10:37,975 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:10:37,975 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:10:37,975 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:10:40,475 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:10:40,475 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:10:42,275 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:10:42,585 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:10:43,386 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:10:43,386 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:10:43,387 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:10:43,387 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:10:43,485 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:43,485 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:43,587 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:10:43,797 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:10:44,992 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:10:44,993 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:10:44,993 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:10:44,993 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:10:45,077 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:10:45,077 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:10:45,702 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:46,093 - OddsParser - INFO - Successfully parsed odds for 8 bookmakers.
+2026-11-04 19:10:46,093 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/newcastle-utd-p6ahwuwJ/#l0Zi1FqS (attempts: 1)
+2026-11-04 19:10:46,093 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:46,093 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:46,093 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:46,295 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:10:46,295 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:10:47,287 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/manchester-united-ppjDR086/#jLXc70i4
+2026-11-04 19:10:48,083 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:48,083 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:50,283 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:10:50,283 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:10:50,597 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:51,185 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:10:51,185 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/nottingham-UsushcZr/west-ham-Cxq57r8g/#b7OC1VKr (attempts: 1)
+2026-11-04 19:10:51,186 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:51,186 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:51,186 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:52,586 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:10:53,393 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:10:53,394 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/southampton-WdKOwxDM/#K0PE3IjT (attempts: 1)
+2026-11-04 19:10:53,395 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:53,395 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:10:53,395 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:10:53,591 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/tottenham-UDg08Ohm/#prBWju7N
+2026-11-04 19:10:55,489 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/liverpool-lId4TMwf/#8GvXq6gt
+2026-11-04 19:10:55,576 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:10:55,791 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:10:57,388 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:10:57,388 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:10:57,388 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:10:57,388 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:00,293 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:00,293 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:01,793 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:11:02,281 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:11:03,378 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:11:03,379 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:11:03,379 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:11:03,379 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:03,387 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:03,388 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:05,388 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:05,388 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:05,879 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:06,780 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:11:06,780 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/manchester-united-ppjDR086/#jLXc70i4 (attempts: 1)
+2026-11-04 19:11:06,780 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:06,781 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:06,781 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:06,790 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:11:07,190 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:11:07,992 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:11:07,992 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:11:07,992 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:11:07,993 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:08,375 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/tottenham-UDg08Ohm/#8xG7dqwn
+2026-11-04 19:11:08,395 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:08,395 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:09,681 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:09,682 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:10,986 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:12,085 - OddsParser - INFO - Successfully parsed odds for 11 bookmakers.
+2026-11-04 19:11:12,085 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/tottenham-UDg08Ohm/#prBWju7N (attempts: 1)
+2026-11-04 19:11:12,086 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:12,086 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:12,086 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:12,783 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:12,783 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:14,388 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/nottingham-UsushcZr/#YNPdv2NH
+2026-11-04 19:11:15,194 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:15,890 - OddsParser - INFO - Successfully parsed odds for 10 bookmakers.
+2026-11-04 19:11:15,890 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/liverpool-lId4TMwf/#8GvXq6gt (attempts: 1)
+2026-11-04 19:11:15,891 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:15,891 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:15,891 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:18,479 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/west-ham-Cxq57r8g/#UVSurpOh
+2026-11-04 19:11:20,182 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:11:21,388 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:11:22,690 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:11:22,690 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:11:22,690 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:11:22,690 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:25,186 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:25,186 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:25,889 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:11:26,082 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:11:26,778 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:11:26,778 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:11:26,778 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:11:26,778 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:27,886 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:11:28,091 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:28,091 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:28,179 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:11:28,190 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:28,190 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:28,509 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:11:28,510 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:11:28,510 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:11:28,510 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:29,042 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:29,042 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:30,503 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:31,680 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:11:31,680 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/tottenham-UDg08Ohm/#8xG7dqwn (attempts: 1)
+2026-11-04 19:11:31,681 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:31,681 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:31,681 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:31,685 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:31,685 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:32,075 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:32,075 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:33,277 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/newcastle-utd-p6ahwuwJ/#xdWmtOh5
+2026-11-04 19:11:33,888 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:34,278 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:11:34,278 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/nottingham-UsushcZr/#YNPdv2NH (attempts: 1)
+2026-11-04 19:11:34,278 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:34,278 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:34,278 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:35,377 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:35,977 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:11:35,977 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/west-ham-Cxq57r8g/#UVSurpOh (attempts: 1)
+2026-11-04 19:11:35,978 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:35,978 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:35,978 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:36,388 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/bournemouth-OtpNdwrc/#4Uh7Tp9a
+2026-11-04 19:11:37,594 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/ipswich-thqhB2MB/#Y9pOP28O
+2026-11-04 19:11:43,091 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:11:43,491 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:11:44,607 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:11:44,607 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:11:44,607 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:11:44,607 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:46,384 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:46,384 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:47,284 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:11:47,579 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:11:47,695 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:11:47,779 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:11:48,500 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:11:48,500 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:11:48,500 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:11:48,500 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:49,096 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:11:49,096 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:11:49,096 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:11:49,096 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:11:49,389 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:49,389 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:51,176 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:51,176 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:51,180 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:11:51,180 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:11:51,694 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:52,301 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:11:52,301 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/newcastle-utd-p6ahwuwJ/#xdWmtOh5 (attempts: 1)
+2026-11-04 19:11:52,302 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:52,302 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:52,302 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:53,775 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/wolves-j3Azpf5d/#G2JFfN7b
+2026-11-04 19:11:54,282 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:54,282 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:54,291 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:11:54,291 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:11:57,183 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:57,977 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:11:57,977 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/ipswich-thqhB2MB/#Y9pOP28O (attempts: 1)
+2026-11-04 19:11:57,978 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:57,978 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:57,978 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:58,075 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:11:58,880 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:11:58,880 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/bournemouth-OtpNdwrc/#4Uh7Tp9a (attempts: 1)
+2026-11-04 19:11:58,880 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:11:58,880 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:11:58,880 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:00,488 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/fulham-69ZiU2Om/#xriFROwC
+2026-11-04 19:12:00,582 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/southampton-WdKOwxDM/#6yO4xthU
+2026-11-04 19:12:04,175 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:05,588 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:06,987 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:06,987 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:06,987 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:06,987 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:08,589 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:08,589 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:09,393 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:09,678 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:10,598 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:10,598 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:10,598 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:10,598 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:10,606 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:10,777 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:12,185 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:12,185 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:12,185 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:12,185 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:12,194 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:12:12,194 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:12:12,381 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:12,381 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:13,975 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:13,975 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:14,500 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:12:14,815 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:12:14,815 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/wolves-j3Azpf5d/#G2JFfN7b (attempts: 1)
+2026-11-04 19:12:14,815 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:14,815 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:12:14,816 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:15,385 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:12:15,385 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:12:16,276 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/nottingham-UsushcZr/#xdGPqoxq
+2026-11-04 19:12:16,979 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:12:16,979 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:12:17,791 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:12:18,290 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:12:18,290 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/fulham-69ZiU2Om/#xriFROwC (attempts: 1)
+2026-11-04 19:12:18,291 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:18,291 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:12:18,291 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:19,110 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:12:19,580 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:12:19,580 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/southampton-WdKOwxDM/#6yO4xthU (attempts: 1)
+2026-11-04 19:12:19,581 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:19,581 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:12:19,581 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:20,287 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/liverpool-lId4TMwf/#tQUgk7EL
+2026-11-04 19:12:21,379 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/manchester-united-ppjDR086/#KKqaTPi2
+2026-11-04 19:12:22,480 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:23,278 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:26,076 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:26,076 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:26,076 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:26,076 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:29,896 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:29,897 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:30,688 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:30,995 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:31,698 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:31,699 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:31,699 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:31,699 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:31,711 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:31,888 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:32,600 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:32,600 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:32,600 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:32,600 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:32,977 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:12:32,977 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:12:33,586 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:33,586 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:33,888 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:33,888 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:35,397 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:12:36,377 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:12:36,377 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/nottingham-UsushcZr/#xdGPqoxq (attempts: 1)
+2026-11-04 19:12:36,378 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:36,378 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:12:36,378 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:36,683 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:12:36,683 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:12:36,893 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:12:36,893 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:12:37,893 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/newcastle-utd-p6ahwuwJ/#nRyoiTq9
+2026-11-04 19:12:39,787 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:12:40,879 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:12:40,879 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/liverpool-lId4TMwf/#tQUgk7EL (attempts: 1)
+2026-11-04 19:12:40,880 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:40,880 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:12:40,880 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:41,784 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:12:42,578 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:12:42,579 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/manchester-united-ppjDR086/#KKqaTPi2 (attempts: 1)
+2026-11-04 19:12:42,579 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:42,579 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:12:42,579 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:44,580 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/bournemouth-OtpNdwrc/#SM4Kz8aS
+2026-11-04 19:12:44,676 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/tottenham-UDg08Ohm/west-ham-Cxq57r8g/#82abV6vm
+2026-11-04 19:12:49,182 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:50,379 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:51,780 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:51,781 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:51,781 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:51,781 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:54,381 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:54,381 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:55,498 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:55,694 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:56,691 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:56,691 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:56,691 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:56,691 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:57,383 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:12:57,383 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:12:57,486 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:57,487 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:57,677 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:12:57,790 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:12:58,304 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:12:58,304 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:12:58,304 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:12:58,304 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:12:58,907 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:12:58,907 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:12:59,507 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:12:59,907 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:12:59,908 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/newcastle-utd-p6ahwuwJ/#nRyoiTq9 (attempts: 1)
+2026-11-04 19:12:59,974 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:12:59,975 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:12:59,975 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:00,490 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:00,490 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:01,384 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/ipswich-thqhB2MB/#YN9YsP6e
+2026-11-04 19:13:01,910 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:01,911 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:03,797 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:13:04,394 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:13:04,395 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/bournemouth-OtpNdwrc/#SM4Kz8aS (attempts: 1)
+2026-11-04 19:13:04,395 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:04,395 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:13:04,395 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:04,882 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:13:05,390 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:13:05,390 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/tottenham-UDg08Ohm/west-ham-Cxq57r8g/#82abV6vm (attempts: 1)
+2026-11-04 19:13:05,391 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:05,391 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:13:05,391 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:05,983 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/southampton-WdKOwxDM/#tlDtt3y8
+2026-11-04 19:13:07,890 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/brentford-xYe7DwID/#nX2mpxRQ
+2026-11-04 19:13:10,391 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:11,684 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:13,579 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:13,579 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:13,579 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:13,579 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:15,394 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:15,394 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:13:15,781 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:16,095 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:16,901 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:16,901 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:16,901 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:16,901 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:16,981 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:17,091 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:17,603 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:17,603 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:17,603 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:17,603 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:18,478 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:18,478 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:18,579 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:18,579 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:13:18,678 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:18,678 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:13:20,880 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:13:21,476 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:13:21,476 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/ipswich-thqhB2MB/#YN9YsP6e (attempts: 1)
+2026-11-04 19:13:21,477 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:21,477 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:13:21,477 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:21,582 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:21,582 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:21,680 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:21,680 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:22,781 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/wolves-j3Azpf5d/#OCxRmFfE
+2026-11-04 19:13:25,182 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:13:25,976 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:13:25,976 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/southampton-WdKOwxDM/#tlDtt3y8 (attempts: 1)
+2026-11-04 19:13:25,977 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:25,977 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:13:25,977 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:25,989 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:13:26,500 - OddsParser - INFO - Successfully parsed odds for 8 bookmakers.
+2026-11-04 19:13:26,500 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/brentford-xYe7DwID/#nX2mpxRQ (attempts: 1)
+2026-11-04 19:13:26,500 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:26,500 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:13:26,501 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:27,979 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/nottingham-UsushcZr/#YmgPGn8d
+2026-11-04 19:13:28,078 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/tottenham-UDg08Ohm/#zgBxQjoA
+2026-11-04 19:13:28,981 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:32,287 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:33,489 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:33,489 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:33,490 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:33,490 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:35,178 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:35,178 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:13:36,781 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:37,880 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:37,898 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:37,986 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:38,688 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:38,688 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:38,688 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:38,688 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:38,691 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:38,691 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:39,390 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:39,390 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:39,390 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:39,390 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:40,696 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:40,696 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:13:40,776 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:40,776 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:13:40,998 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:13:41,412 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:13:41,412 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/manchester-city-Wtn9Stg0/wolves-j3Azpf5d/#OCxRmFfE (attempts: 1)
+2026-11-04 19:13:41,412 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:41,412 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:13:41,412 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:42,680 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/manchester-united-ppjDR086/#tWk3BiWG
+2026-11-04 19:13:44,579 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:44,580 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:44,585 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:44,585 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:47,080 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:13:47,681 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:13:47,681 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/tottenham-UDg08Ohm/#zgBxQjoA (attempts: 1)
+2026-11-04 19:13:47,682 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:47,682 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:13:47,682 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:47,696 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:13:48,093 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:13:48,093 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/nottingham-UsushcZr/#YmgPGn8d (attempts: 1)
+2026-11-04 19:13:48,093 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:48,093 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:13:48,093 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:13:49,391 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/west-ham-Cxq57r8g/#nXUs49Oj
+2026-11-04 19:13:49,680 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/fulham-69ZiU2Om/leicester-KrrdAMyI/#vgtkxC4M
+2026-11-04 19:13:50,583 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:52,987 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:54,175 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:54,175 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:54,175 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:54,175 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:55,782 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:55,782 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:13:56,992 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:57,401 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:58,103 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:58,103 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:58,103 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:58,103 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:58,181 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:13:58,304 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:13:58,912 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:13:58,912 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:13:58,912 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:13:58,912 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:13:58,982 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:13:58,982 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:13:59,079 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:59,079 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:13:59,592 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:13:59,592 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:14:01,113 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:01,481 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:14:01,481 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/manchester-united-ppjDR086/#tWk3BiWG (attempts: 1)
+2026-11-04 19:14:01,482 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:01,482 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:01,482 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:02,082 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:02,083 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:02,595 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:02,595 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:03,000 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/ipswich-thqhB2MB/#6Dg5Psv0
+2026-11-04 19:14:05,277 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:06,189 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:14:06,189 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brighton-2XrRecc3/west-ham-Cxq57r8g/#nXUs49Oj (attempts: 1)
+2026-11-04 19:14:06,190 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:06,190 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:06,190 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:06,786 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:07,779 - OddsParser - INFO - Successfully parsed odds for 6 bookmakers.
+2026-11-04 19:14:07,779 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/fulham-69ZiU2Om/leicester-KrrdAMyI/#vgtkxC4M (attempts: 1)
+2026-11-04 19:14:07,780 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:07,780 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:07,780 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:09,686 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/wolves-j3Azpf5d/#M9ZJxUUF
+2026-11-04 19:14:09,787 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/nottingham-UsushcZr/wolves-j3Azpf5d/#2g6Z30ht
+2026-11-04 19:14:15,582 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:14:16,785 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:14:19,491 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:14:19,491 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:14:19,491 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:14:19,492 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:14:21,578 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:14:21,578 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:14:22,778 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:14:22,885 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:14:23,184 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:14:23,193 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:14:24,291 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:14:24,291 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:14:24,291 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:14:24,291 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:14:24,800 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:14:24,801 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:14:24,801 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:14:24,801 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:14:24,882 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:24,882 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:26,481 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:14:26,482 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:14:26,485 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:14:26,485 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:14:26,959 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:27,129 - OddsParser - INFO - Successfully parsed odds for 10 bookmakers.
+2026-11-04 19:14:27,129 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/ipswich-thqhB2MB/#6Dg5Psv0 (attempts: 1)
+2026-11-04 19:14:27,130 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:27,130 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:27,130 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:28,493 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/everton-KluSTr9s/#vRHTRCGc
+2026-11-04 19:14:29,612 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:29,613 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:29,675 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:29,675 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:31,887 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:32,281 - OddsParser - INFO - Successfully parsed odds for 7 bookmakers.
+2026-11-04 19:14:32,281 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/nottingham-UsushcZr/wolves-j3Azpf5d/#2g6Z30ht (attempts: 1)
+2026-11-04 19:14:32,282 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:32,282 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:32,282 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:32,294 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:32,547 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:14:32,547 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/wolves-j3Azpf5d/#M9ZJxUUF (attempts: 1)
+2026-11-04 19:14:32,548 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:32,548 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:32,548 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:32,593 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:14:32,695 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:14:32,977 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:14:32,977 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:14:32,978 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:14:32,978 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:14:33,510 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:14:33,510 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:14:33,826 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/manchester-city-Wtn9Stg0/#tjEpOUFM
+2026-11-04 19:14:34,064 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/crystal-palace-AovF1Mia/#SnlB9V0T
+2026-11-04 19:14:36,984 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:36,984 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:39,487 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:40,090 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:14:40,090 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/everton-KluSTr9s/#vRHTRCGc (attempts: 1)
+2026-11-04 19:14:40,091 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:40,091 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:40,091 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:41,490 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:14:41,682 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:14:42,187 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/brighton-2XrRecc3/#jBtlw776
+2026-11-04 19:14:42,282 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:14:42,284 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:14:43,188 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:14:43,188 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:14:43,188 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:14:43,188 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:14:43,712 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:14:43,712 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:14:43,712 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:14:43,712 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:14:45,491 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:14:45,491 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:14:45,679 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:14:45,679 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:14:48,495 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:48,495 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:48,581 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:14:48,686 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:48,686 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:48,783 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:14:49,604 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:14:49,604 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:14:49,604 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:14:49,604 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:14:50,875 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:51,691 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:14:51,692 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/crystal-palace-AovF1Mia/#SnlB9V0T (attempts: 1)
+2026-11-04 19:14:51,692 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:51,692 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:51,693 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:51,787 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:14:52,385 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:14:52,385 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/manchester-city-Wtn9Stg0/#tjEpOUFM (attempts: 1)
+2026-11-04 19:14:52,386 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:52,386 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:14:52,386 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:14:52,387 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:14:52,387 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:14:53,881 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/liverpool-lId4TMwf/#QegS9veC
+2026-11-04 19:14:54,189 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/ipswich-thqhB2MB/#pnoKB0Qa
+2026-11-04 19:14:55,695 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:14:55,695 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:14:59,977 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:15:00,879 - OddsParser - INFO - Successfully parsed odds for 10 bookmakers.
+2026-11-04 19:15:00,880 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/brighton-2XrRecc3/#jBtlw776 (attempts: 1)
+2026-11-04 19:15:00,880 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:00,880 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:15:00,880 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:02,784 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/fulham-69ZiU2Om/#xMsCDMem
+2026-11-04 19:15:05,381 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:06,678 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:07,879 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:07,879 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:07,879 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:07,879 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:07,883 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:08,281 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:09,283 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:09,283 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:09,283 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:09,283 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:09,595 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:09,595 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:10,206 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:10,206 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:10,794 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:10,980 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:11,586 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:11,586 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:11,586 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:11,586 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:12,385 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:12,385 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:12,675 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:12,675 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:13,209 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:13,209 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:14,795 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:15:15,183 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:15:15,183 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/leicester-KrrdAMyI/liverpool-lId4TMwf/#QegS9veC (attempts: 1)
+2026-11-04 19:15:15,183 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:15,184 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:15:15,184 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:15,388 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:15,388 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:15,482 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:15:15,906 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:15:15,906 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/arsenal-hA1Zm19f/ipswich-thqhB2MB/#pnoKB0Qa (attempts: 1)
+2026-11-04 19:15:15,975 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:15,975 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:15:15,975 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:16,489 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/fulham-69ZiU2Om/nottingham-UsushcZr/#t0T4Q863
+2026-11-04 19:15:17,683 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/newcastle-utd-p6ahwuwJ/#YRapaNtf
+2026-11-04 19:15:18,489 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:15:19,190 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:15:19,190 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/fulham-69ZiU2Om/#xMsCDMem (attempts: 1)
+2026-11-04 19:15:19,191 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:19,191 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:15:19,191 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:21,477 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/crystal-palace-AovF1Mia/#QsEgeutJ
+2026-11-04 19:15:24,986 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:26,276 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:27,679 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:27,679 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:27,679 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:27,679 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:29,192 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:29,192 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:29,386 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:29,692 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:30,213 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:30,213 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:30,213 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:30,213 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:30,278 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:30,395 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:30,800 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:30,801 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:30,801 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:30,801 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:30,887 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:30,887 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:31,399 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:31,399 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:32,195 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:32,195 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:33,891 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:33,891 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:34,384 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:15:34,796 - OddsParser - INFO - Successfully parsed odds for 10 bookmakers.
+2026-11-04 19:15:34,796 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/fulham-69ZiU2Om/nottingham-UsushcZr/#t0T4Q863 (attempts: 1)
+2026-11-04 19:15:34,797 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:34,797 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:15:34,797 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:34,799 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:34,799 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:36,086 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/brighton-2XrRecc3/#6ubhc1B6
+2026-11-04 19:15:36,197 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:15:37,590 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:15:37,590 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/aston-villa-W00wmLO0/newcastle-utd-p6ahwuwJ/#YRapaNtf (attempts: 1)
+2026-11-04 19:15:37,591 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:37,591 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:15:37,591 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:38,492 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:15:39,279 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:15:39,279 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/bournemouth-OtpNdwrc/crystal-palace-AovF1Mia/#QsEgeutJ (attempts: 1)
+2026-11-04 19:15:39,280 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:39,280 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:15:39,280 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:40,283 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/manchester-city-Wtn9Stg0/#hl6uJrYP
+2026-11-04 19:15:42,685 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/southampton-WdKOwxDM/west-ham-Cxq57r8g/#KG1fDD14
+2026-11-04 19:15:49,675 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:50,278 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:52,084 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:52,087 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:52,087 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:52,087 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:52,190 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:52,580 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:53,081 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:53,081 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:53,081 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:53,081 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:54,187 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:54,187 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:54,190 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:54,190 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:54,511 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:15:54,689 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:15:55,116 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:15:55,117 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:15:55,117 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:15:55,117 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:15:55,704 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:15:55,704 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:15:57,190 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:57,191 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:57,199 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:57,199 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:58,707 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:15:58,707 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:15:59,415 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:15:59,775 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:15:59,775 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/brighton-2XrRecc3/#6ubhc1B6 (attempts: 1)
+2026-11-04 19:15:59,776 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:59,776 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:15:59,776 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:15:59,880 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:16:00,282 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:16:00,282 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/everton-KluSTr9s/manchester-city-Wtn9Stg0/#hl6uJrYP (attempts: 1)
+2026-11-04 19:16:00,283 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:00,283 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:16:00,283 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:01,078 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:16:01,389 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:16:01,389 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/southampton-WdKOwxDM/west-ham-Cxq57r8g/#KG1fDD14 (attempts: 1)
+2026-11-04 19:16:01,390 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:01,390 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:16:01,390 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:01,876 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/newcastle-utd-p6ahwuwJ/#tW9QWPoQ
+2026-11-04 19:16:01,988 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/newcastle-utd-p6ahwuwJ/#Imm8loJ5
+2026-11-04 19:16:03,192 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/newcastle-utd-p6ahwuwJ/#KOZApOR0
+2026-11-04 19:16:11,988 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:16:12,184 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:16:12,677 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:16:12,683 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:16:13,483 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:16:13,484 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:16:13,484 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:16:13,484 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:16:13,796 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:16:13,796 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:16:13,797 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:16:13,797 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:16:15,792 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:16:15,792 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:16:15,887 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:16:15,887 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:16:16,377 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:16:16,776 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+2026-11-04 19:16:17,279 - OddsPortalScraper - INFO - Scraping markets: ['1x2']
+2026-11-04 19:16:17,280 - OddsPortalMarketExtractor - INFO - Scraping market: 1x2 (Period: FullTime)
+2026-11-04 19:16:17,280 - OddsPortalMarketExtractor - INFO - Scraping odds for market: 1X2, specific: None, period: FullTime, preview_mode: False
+2026-11-04 19:16:17,280 - MarketTabNavigator - INFO - Attempting to navigate to market tab: 1X2
+2026-11-04 19:16:18,381 - MarketTabNavigator - INFO - Successfully navigated to 1X2 tab (hash code '1X2').
+2026-11-04 19:16:18,381 - NavigationManager - INFO - Waiting for market switch to complete for: 1X2
+2026-11-04 19:16:18,878 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:16:18,878 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:16:18,890 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:16:18,891 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:16:21,576 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:16:23,176 - OddsParser - INFO - Successfully parsed odds for 8 bookmakers.
+2026-11-04 19:16:23,177 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/brentford-xYe7DwID/newcastle-utd-p6ahwuwJ/#Imm8loJ5 (attempts: 1)
+2026-11-04 19:16:23,177 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:23,177 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:16:23,177 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:23,179 - NavigationManager - INFO - Market switch confirmed via URL code: 1X2 is active
+2026-11-04 19:16:23,179 - PeriodSelector - INFO - Period scope 2 already active for 'FullTime'.
+2026-11-04 19:16:23,190 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:16:23,791 - OddsParser - INFO - Successfully parsed odds for 9 bookmakers.
+2026-11-04 19:16:23,791 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/crystal-palace-AovF1Mia/newcastle-utd-p6ahwuwJ/#tW9QWPoQ (attempts: 1)
+2026-11-04 19:16:23,792 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:23,792 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:16:23,792 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:25,084 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/chelsea-4fGZN2oK/ipswich-thqhB2MB/#Wb1NgS4E
+2026-11-04 19:16:25,584 - OddsParser - INFO - Parsing odds from HTML content.
+2026-11-04 19:16:26,397 - OddsParser - INFO - Successfully parsed odds for 8 bookmakers.
+2026-11-04 19:16:26,397 - OddsPortalScraper - INFO - Successfully scraped match link: https://www.oddsportal.com/football/h2h/manchester-united-ppjDR086/newcastle-utd-p6ahwuwJ/#KOZApOR0 (attempts: 1)
+2026-11-04 19:16:26,398 - LocalDataStorage - INFO - Successfully saved 1 record(s) to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:26,398 - StorageManager - INFO - Successfully stored 1 records.
+2026-11-04 19:16:26,398 - OddsPortalScraper - INFO - Checkpoint saved 1 record to data/smoke_test/epl_1x2_2024_2025.json
+2026-11-04 19:16:26,476 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/liverpool-lId4TMwf/west-ham-Cxq57r8g/#SQfWi6ZQ
+2026-11-04 19:16:28,791 - OddsPortalScraper - INFO - Scraping match: https://www.oddsportal.com/football/h2h/tottenham-UDg08Ohm/wolves-j3Azpf5d/#x06y1qCs
+2026-11-04 19:16:34,279 - SelectionManager - INFO - Ensuring bookies-filter is set to: All Bookies
+2026-11-04 19:16:34,794 - SelectionManager - INFO - bookies-filter already set to 'All Bookies'. No action needed.
+node:events:486
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: write EPIPE
+    at WriteWrap.onWriteComplete [as oncomplete] (node:internal/stream_base_commons:87:19)
+Emitted 'error' event on Socket instance at:
+    at emitErrorNT (node:internal/streams/destroy:170:8)
+    at emitErrorCloseNT (node:internal/streams/destroy:129:3)
+    at process.processTicksAndRejections (node:internal/process/task_queues:89:21) {
+  errno: -32,
+  code: 'EPIPE',
+  syscall: 'write'
+}
+
+Node.js v24.11.1
