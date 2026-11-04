@@ -3,7 +3,7 @@ import os
 from pathlib import Path
 import random
 
-from playwright.async_api import Page, Route, async_playwright
+from patchright.async_api import Page, Route, async_playwright
 
 from oddsharvester.core.exceptions import AllProxiesExhaustedError
 from oddsharvester.utils.constants import PLAYWRIGHT_BROWSER_ARGS, PLAYWRIGHT_BROWSER_ARGS_DOCKER
@@ -231,34 +231,30 @@ class PlaywrightManager:
 
             browser_args = PLAYWRIGHT_BROWSER_ARGS_DOCKER if is_running_in_docker() else PLAYWRIGHT_BROWSER_ARGS
             launch_proxy = proxy_manager.launch_proxy() if proxy_manager else None
-            self.browser = await self.playwright.chromium.launch(
-                headless=headless, args=browser_args, proxy=launch_proxy
-            )
-
             effective_user_agent = user_agent or random.choice(DEFAULT_USER_AGENTS)  # noqa: S311
 
-            # (key, per-context proxy override) for each context to create.
-            # Per-context proxy is used ONLY in multi-proxy mode; otherwise the
-            # single context inherits the launch proxy (unchanged behavior).
-            if proxy_manager and proxy_manager.is_multi_proxy():
-                context_specs = [(e.key, e.config) for e in proxy_manager.entries]
-            elif proxy_manager:
-                context_specs = [(proxy_manager.entries[0].key, None)]
-            else:
-                context_specs = [("direct", None)]
-
-            self._default_key = context_specs[0][0]
-            for index, (key, ctx_proxy) in enumerate(context_specs):
-                self.contexts[key] = await self._create_context(
-                    proxy=ctx_proxy,
-                    user_agent=effective_user_agent,
-                    locale=locale,
-                    timezone_id=timezone_id,
-                    enable_har=(index == 0),
-                )
-
-            self.context = self.contexts[self._default_key]
-            self.page = await self.context.new_page()
+            # Patchright (afb-ODDSH-PATCHRIGHT swap): protocol-level stealth
+            # requires a persistent context — browser.new_context() leaks
+            # Runtime.enable etc. STEALTH_SCRIPT is intentionally NOT loaded
+            # here: its fingerprint patches break the OddsPortal SPA render
+            # (bisect-proven 2026-11-04); patchright replaces it.
+            user_data_dir = Path(__file__).resolve().parents[3] / "data" / ".patchright-profile"
+            user_data_dir.mkdir(parents=True, exist_ok=True)
+            context_kwargs: dict = {
+                "user_agent": effective_user_agent,
+                "locale": locale,
+                "timezone_id": timezone_id,
+                "viewport": {"width": random.randint(1366, 1920), "height": random.randint(768, 1080)},  # noqa: S311
+            }
+            if launch_proxy:
+                context_kwargs["proxy"] = launch_proxy
+            self.context = await self.playwright.chromium.launch_persistent_context(
+                str(user_data_dir), headless=headless, args=browser_args, **context_kwargs
+            )
+            self.browser = self.context.browser
+            self._default_key = "direct"
+            self.contexts = {self._default_key: self.context}
+            self.page = self.context.pages[0] if self.context.pages else await self.context.new_page()
 
             # Block OneTrust scripts to prevent bot detection
             await self._block_one_trust_scripts(self.page)
