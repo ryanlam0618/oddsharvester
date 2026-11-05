@@ -86,11 +86,16 @@ def save_state(state: dict) -> None:
     STATE_PATH.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def run_cli(args: List[str], timeout_s: int, log_path: Path) -> Tuple[int, str]:
+def run_cli(args: List[str], timeout_s: int, log_path: Path, env_overrides: Optional[Dict[str, str]] = None) -> Tuple[int, str]:
+    import os
+
     cmd = [str(VENV_PY), "-m", "oddsharvester.cli.cli"] + args
     log_path.parent.mkdir(parents=True, exist_ok=True)
+    env = os.environ.copy()
+    if env_overrides:
+        env.update(env_overrides)
     with log_path.open("w", encoding="utf-8") as fh:
-        proc = subprocess.run(cmd, cwd=str(REPO_ROOT), stdout=fh, stderr=subprocess.STDOUT, timeout=timeout_s)
+        proc = subprocess.run(cmd, cwd=str(REPO_ROOT), stdout=fh, stderr=subprocess.STDOUT, timeout=timeout_s, env=env)
     return proc.returncode, log_path.read_text(encoding="utf-8", errors="replace")
 
 
@@ -119,7 +124,7 @@ def links_probe(sport: str, slug: str, season: str, out_json: Path, log: Path, t
     return len(links)
 
 
-def sample_odds(sport: str, links_file: Path, out_json: Path, log: Path, timeout_s: int, max_matches: int) -> Optional[dict]:
+def sample_odds(sport: str, season: str, links_file: Path, out_json: Path, log: Path, timeout_s: int, max_matches: int) -> Optional[dict]:
     """Full 1x2 scrape for up to max_matches links; returns the parsed output."""
     links = [ln.strip() for ln in links_file.read_text(encoding="utf-8").splitlines() if ln.strip()][:max_matches]
     if not links:
@@ -128,13 +133,19 @@ def sample_odds(sport: str, links_file: Path, out_json: Path, log: Path, timeout
     links_sample.write_text("\n".join(links), encoding="utf-8")
     args = [
         "historic", "-s", sport,
+        "--season", season,
         "--match-links-file", str(links_sample),
         "-m", "1x2", "--headless",
+        # NOTE: checkpoint save is controlled by the OH_CHECKPOINT_SAVE env
+        # var (no CLI flag) — set to 0 for this subprocess so store_data runs
+        # (with checkpoint+file_path set, the CLI skips store_data assuming
+        # per-match checkpoints wrote the data, but checkpoints don't run in
+        # match-links mode -> data was lost).
         "--user-agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
         "--locale", "en-GB", "--timezone", "Europe/London",
         "-f", "json", "-o", str(out_json),
     ]
-    run_cli(args, timeout_s, log)
+    run_cli(args, timeout_s, log, env_overrides={"OH_CHECKPOINT_SAVE": "0"})
     if not out_json.exists():
         return None
     try:
@@ -227,7 +238,7 @@ def verify_league(league: dict, idx: int, args, state: dict) -> dict:
         links_file.write_text("\n".join(links), encoding="utf-8")
         sample_out = OUT_DIR / f"{slug}_{season}_odds.json"
         sample_log = OUT_DIR / f"{slug}_{season}_odds.log"
-        sample = sample_odds(sport, links_file, sample_out, sample_log, args.sample_timeout, args.max_matches)
+        sample = sample_odds(sport, season, links_file, sample_out, sample_log, args.sample_timeout, args.max_matches)
         validation = validate_sample(sample)
         status = "PASS" if validation["valid_matches"] >= 5 else ("PARTIAL" if validation["valid_matches"] >= 1 else "NO-DATA")
         league_state.update({
