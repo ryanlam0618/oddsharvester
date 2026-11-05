@@ -42,26 +42,32 @@ SLUG_CANDIDATES: Dict[str, List[str]] = {
     "J1 League": ["japan-j1-league"],
     "K League 1": ["south-korea-k-league-1", "korea-republic-k-league-1"],
     "A-League Men": ["australia-a-league", "australia-a-league-men"],
-    "Chinese Super League": ["china-chinese-super-league"],
+    "Chinese Super League": ["china-super-league"],
     "FA Cup": ["england-fa-cup"],
     "Copa del Rey": ["spain-copa-del-rey"],
     "Coppa Italia": ["italy-coppa-italia"],
     "Coupe de France": ["france-coupe-de-france"],
     "DFB Pokal": ["germany-dfb-pokal"],
-    "EFL Cup": ["england-efl-cup", "england-league-cup"],
+    "EFL Cup": ["england-efl-cup"],
     "Emperor's Cup": ["japan-emperors-cup"],
-    "J.League Cup": ["japan-j-league-cup", "japan-j-league-ybc-levain-cup"],
-    "Australia Cup": ["australia-australia-cup", "australia-ffa-cup"],
-    "Chinese FA Cup": ["china-chinese-fa-cup", "china-china-fa-cup"],
-    "UCL": ["uefa-champions-league", "europe-champions-league"],
-    "UEL": ["uefa-europa-league", "europe-europa-league"],
-    "UECL": ["uefa-europa-conference-league", "europe-europa-conference-league"],
-    "AFC Champions League": ["asia-afc-champions-league", "asia-afc-champions-league-elite"],
-    "AFC Champions League Two": ["asia-afc-champions-league-two"],
+    "J.League Cup": ["japan-j-league-cup"],
+    "Australia Cup": ["australia-australia-cup"],
+    "Chinese FA Cup": ["china-chinese-fa-cup"],
+    "UCL": ["champions-league"],
+    "UEL": ["europa-league"],
+    "UECL": ["conference-league"],
+    "AFC Champions League": ["afc-champions-league", "afc-champions-league-elite"],
+    "AFC Champions League Two": ["afc-champions-league-2", "afc-cup"],
 }
 
 # Two-year (league seasons) vs calendar-year (most cups) season formats
-CALENDAR_YEAR_CUPS = {"Australia Cup", "Emperor's Cup", "Chinese FA Cup"}
+# Verified 2026-11-05 via links-only probes (data/slugfix/):
+#   CSL, AFC CL (pre-2024), AFC Cup / ACL Two (pre-2024) use calendar years.
+CALENDAR_YEAR_CUPS = {
+    "Australia Cup", "Emperor's Cup", "Chinese FA Cup",
+    "Chinese Super League", "AFC Champions League", "AFC Champions League Two",
+    "J.League Cup",
+}
 
 
 def season_formats(sample_year: int, league: str) -> List[str]:
