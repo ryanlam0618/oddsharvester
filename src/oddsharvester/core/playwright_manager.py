@@ -6,7 +6,11 @@ import random
 from patchright.async_api import Page, Route, async_playwright
 
 from oddsharvester.core.exceptions import AllProxiesExhaustedError
-from oddsharvester.utils.constants import PLAYWRIGHT_BROWSER_ARGS, PLAYWRIGHT_BROWSER_ARGS_DOCKER
+from oddsharvester.utils.constants import (
+    PLAYWRIGHT_BROWSER_ARGS,
+    PLAYWRIGHT_BROWSER_ARGS_DOCKER,
+    PLAYWRIGHT_BROWSER_ARGS_LOW_MEM,
+)
 from oddsharvester.utils.utils import is_running_in_docker
 
 # Third-party domains to block (synced from SofaScore backfill)
@@ -229,7 +233,12 @@ class PlaywrightManager:
             self._proxy_manager = proxy_manager
             self.playwright = await async_playwright().start()
 
-            browser_args = PLAYWRIGHT_BROWSER_ARGS_DOCKER if is_running_in_docker() else PLAYWRIGHT_BROWSER_ARGS
+            # OH_LOW_MEM=1 (afb-T10-AH): single-process chromium profile that
+            # fits tight cgroup budgets (see constants.py note).
+            if os.environ.get("OH_LOW_MEM") == "1":
+                browser_args = PLAYWRIGHT_BROWSER_ARGS_LOW_MEM
+            else:
+                browser_args = PLAYWRIGHT_BROWSER_ARGS_DOCKER if is_running_in_docker() else PLAYWRIGHT_BROWSER_ARGS
             launch_proxy = proxy_manager.launch_proxy() if proxy_manager else None
             effective_user_agent = user_agent or random.choice(DEFAULT_USER_AGENTS)  # noqa: S311
 

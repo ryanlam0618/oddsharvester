@@ -112,3 +112,28 @@ PLAYWRIGHT_BROWSER_ARGS_DOCKER = [
     "--mute-audio",
     "--window-size=1280,720",
 ]
+
+# afb-T10-AH (2026-11-07): container cgroup memory.max=4GiB with the gateway
+# holding ~3.3GiB leaves <700MiB headroom — a stock headless chromium gets
+# OOM-killed (measured: oom_kill during page navigation). OH_LOW_MEM=1 swaps
+# in a single-process, no-zygote profile that fits the headroom. Slower and
+# less isolated, but scraping is throughput-tolerant, not latency-critical.
+PLAYWRIGHT_BROWSER_ARGS_LOW_MEM = [
+    "--disable-dev-shm-usage",
+    "--no-sandbox",
+    "--headless",
+    "--disable-gpu",
+    "--single-process",
+    "--no-zygote",
+    "--disable-background-networking",
+    "--disable-popup-blocking",
+    "--disable-extensions",
+    "--disable-blink-features=AutomationControlled",
+    "--disable-features=IsolateOrigins,site-per-process",
+    "--mute-audio",
+    "--window-size=1280,720",
+    "--js-flags=--max-old-space-size=256",
+    "--renderer-process-limit=1",
+    "--disable-renderer-backgrounding",
+    "--disable-background-timer-throttling",
+]
