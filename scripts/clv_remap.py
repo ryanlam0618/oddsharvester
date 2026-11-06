@@ -52,6 +52,16 @@ def fold(s: str) -> str:
     """ASCII-fold accents so 'Atlético' == 'Atletico' at token level."""
     import unicodedata
 
+    # explicit non-decomposable char map (PHASE6): schwa/ø/d-stroke etc.
+    s = (s.replace("ə", "a").replace("Ə", "A")
+           .replace("ø", "o").replace("Ø", "O")
+           .replace("đ", "d").replace("Đ", "D")
+           .replace("ð", "d").replace("Ð", "D")
+           .replace("ł", "l").replace("Ł", "L")
+           .replace("ß", "ss"))
+    # common abbreviation expansion (PHASE6): 'Sheffield Utd' == 'Sheffield United'
+    for abbr, full in (("Utd", "united"), ("utd", "united")):
+        s = s.replace(abbr, full)
     return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c))
 
 
@@ -190,7 +200,24 @@ def main() -> int:
                 elif hit == ("AMBIG",):
                     unmatched.append(rec)
                 else:
-                    unmatched.append(rec)
+                    # PHASE7 side-swap fallback: OddsPortal occasionally lists
+                    # cup ties with home/away flipped vs the official record
+                    # (Coppa final 24/25, Australia Cup 23/24). Accept a unique
+                    # swapped-side match and correct the record's sides.
+                    for off in (0, -1, 1):
+                        dd = (d + timedelta(days=off)).isoformat()
+                        cands = [m for m in idx.get(dd, []) if match_pair(a, h, m[1], m[2], la)]
+                        if len(cands) == 1:
+                            rec["home_team"], rec["away_team"] = a, h
+                            sc_h, sc_a = rec.get("home_score"), rec.get("away_score")
+                            rec["home_score"], rec["away_score"] = sc_a, sc_h
+                            matched.append((rec, cands[0][0]))
+                            hit = (cands[0], off)
+                            break
+                        if len(cands) > 1:
+                            break
+                    if hit is None:
+                        unmatched.append(rec)
             # learn aliases from unmatched records with one resolvable side
             for rec in unmatched:
                 try:
