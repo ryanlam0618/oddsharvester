@@ -55,18 +55,56 @@ LEAGUE_SLUGS: Dict[str, str] = {
     "FA Cup": "england-fa-cup",
     "Copa del Rey": "spain-copa-del-rey",
     "Coppa Italia": "italy-coppa-italia",
+    # ---- Batch 2 (afb-PHASE3, Kris approved 2026-11-06) ----
+    "UCL": "champions-league",
+    "UEL": "europa-league",
+    "UECL": "conference-league",
+    "EFL Cup": "england-efl-cup",
+    "Chinese Super League": "china-super-league",
+    "AFC Champions League": "afc-champions-league",
+    "AFC Champions League Two": "afc-champions-league-2",
+    "Emperor's Cup": "japan-emperors-cup",
+    "Australia Cup": "australia-australia-cup",
+}
+
+# Some (league, DB-season-label) pairs live under a different OddsPortal slug
+# (competition renamed): AFC CL Two 2023-24 was 'AFC Cup'.
+SEASON_SLUG_OVERRIDES: Dict[tuple, str] = {
+    ("AFC Champions League Two", "2023-2024"): "afc-cup",
+}
+
+# OddsPortal season-string candidates (first yielding >= MIN_RECORDS wins):
+# ACL editions are listed by calendar year on OddsPortal; two-year strings
+# probed 0 links (2026-11-05 SLUGFIX).
+SEASON_FALLBACKS: Dict[tuple, list] = {
+    ("AFC Champions League", "2023-2024"): ["2023-2024", "2023"],
+    ("AFC Champions League", "2024-2025"): ["2024-2025", "2024"],
+    ("AFC Champions League Two", "2023-2024"): ["2023-2024", "2023"],
+    ("AFC Champions League Two", "2024-2025"): ["2024-2025", "2024"],
 }
 SEASONS = ["2024-2025", "2023-2024"]
 
 # Calendar-year leagues (verified via coverage probes 2026-11-05): OddsPortal
 # seasons for J1/K League are single years ("2024"), not two-year labels.
 # Map DB season label -> scrape season for these.
-CALENDAR_YEAR_LEAGUES = {"J1 League", "K League 1"}
+CALENDAR_YEAR_LEAGUES = {"J1 League", "K League 1",
+                        "Chinese Super League", "Emperor's Cup", "Australia Cup"}
 
 
 def scrape_season_for(league: str, season: str) -> str:
     """DB season label -> OddsPortal season string (calendar-year leagues use the start year)."""
     return season[:4] if league in CALENDAR_YEAR_LEAGUES else season
+
+
+def scrape_slug_for(league: str, season: str) -> str:
+    """(league, DB season label) -> OddsPortal slug (rename overrides)."""
+    return SEASON_SLUG_OVERRIDES.get((league, season), LEAGUE_SLUGS[league])
+
+
+def scrape_season_candidates(league: str, season: str) -> list:
+    """Season strings to try in order for this (league, DB season label)."""
+    primary = scrape_season_for(league, season)
+    return SEASON_FALLBACKS.get((league, season), [primary])
 UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
 # A full league-season yields 100+ matches; anything below this is a partial
 # scrape (CLI timeout / Node driver crash) and must not be trusted (2026-11-05).
@@ -278,10 +316,15 @@ def process_league_season(league: str, season: str, state: dict, worker: int, co
         print(f"  [skip] {key}: done")
         return stats
 
-    slug = LEAGUE_SLUGS[league]
+    season_label = season
+    slug = SEASON_SLUG_OVERRIDES.get((league, season_label), LEAGUE_SLUGS[league])
     season = scrape_season_for(league, season)
-    # ---- Stage A: scrape ----
-    scraped_path = scrape_league_season(league, slug, season, worker, timeout_s=SCRAPE_TIMEOUT_S)
+    # ---- Stage A: scrape (try season candidates in order) ----
+    scraped_path = None
+    for cand in SEASON_FALLBACKS.get((league, season_label), [season]):
+        scraped_path = scrape_league_season(league, slug, cand, worker, timeout_s=SCRAPE_TIMEOUT_S)
+        if scraped_path:
+            break
     if not scraped_path:
         st["stage"] = "scrape-failed"
         state[key] = st

@@ -238,7 +238,12 @@ class PlaywrightManager:
             # Runtime.enable etc. STEALTH_SCRIPT is intentionally NOT loaded
             # here: its fingerprint patches break the OddsPortal SPA render
             # (bisect-proven 2026-11-04); patchright replaces it.
-            user_data_dir = Path(__file__).resolve().parents[3] / "data" / ".patchright-profile"
+            # OH_PROFILE_DIR env override enables parallel workers with
+            # separate profiles (afb-CLV-BACKFILL concurrency).
+            user_data_dir = Path(os.environ.get(
+                "OH_PROFILE_DIR",
+                str(Path(__file__).resolve().parents[3] / "data" / ".patchright-profile"),
+            ))
             user_data_dir.mkdir(parents=True, exist_ok=True)
             context_kwargs: dict = {
                 "user_agent": effective_user_agent,

@@ -94,6 +94,7 @@ def load_scrape_files():
     # extra slugs written under calendar-year scrape seasons
     slug_to_league.setdefault("japan-j1-league", "J1 League")
     slug_to_league.setdefault("south-korea-k-league-1", "K League 1")
+    slug_to_league.setdefault("afc-cup", "AFC Champions League Two")
     files = sorted(
         f for f in glob.glob(str(OUT_DIR / "*.json"))
         if "state" not in f and "partial" not in f and "bak" not in f and "alias" not in f
