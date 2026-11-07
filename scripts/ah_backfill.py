@@ -37,6 +37,7 @@ import argparse
 import importlib.util
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -63,9 +64,12 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
 # Same partial-scrape guard as 1x2 backfill (2026-11-05 lesson): a full
 # league-season yields 20+ matches; below this the output is partial.
 MIN_RECORDS = 20
-# AH scrape visits every match page and clicks the AH tab: slightly slower
-# than 1x2 (~13s/match measured). 2h timeout gives ample headroom.
-SCRAPE_TIMEOUT_S = 7200
+# afb-T10-AH (2026-11-07): preview-only (passive) AH capture measured
+# ~15-20s/match (no per-line clicks; the AH tab renders ALL lines in one
+# table). Full-line click mode measured 2.6-4.5 min/match -> multi-day runs
+# that also risk the aggregate-write-at-end losing everything on timeout
+# (Australia Cup 2023 lost exactly this way). 4h timeout is ample headroom.
+SCRAPE_TIMEOUT_S = 14400
 
 
 # ---------------- state helpers ----------------
@@ -203,7 +207,7 @@ def scrape_league_season(slug: str, season: str, worker: int, timeout_s: int) ->
     cmd = [
         str(REPO_ROOT / ".venv" / "bin" / "python"), "-m", "oddsharvester.cli.cli",
         "historic", "-s", "football", "-l", slug, "--season", season,
-        "-m", "asian_handicap", "--headless",
+        "-m", "asian_handicap", "--preview-only", "--headless",
         "--user-agent", UA, "--locale", "en-GB", "--timezone", "Europe/London",
         "-f", "json", "-o", str(out),
     ]
@@ -260,26 +264,43 @@ def _ah_line_from_token(token: str) -> Optional[str]:
     return str(val)
 
 
-def extract_ah_entries(rec: dict) -> List[Tuple[str, List[dict]]]:
-    """Yield (line_str, [bookmaker entries]) for every AH line present in a record.
+_AH_LINE_RE = re.compile(r"Asian Handicap\s*([-+]?[0-9]+(?:\.[0-9]+)?)")
 
-    Record keys look like 'asian_handicap_-0_5_market' (one per expanded line
-    token, non-preview mode). Entry keys: team1_handicap / team2_handicap /
-    bookmaker_name (per sport_market_registry odds_labels).
+
+def extract_ah_entries(rec: dict) -> List[Tuple[str, List[dict]]]:
+    """Collect one entry list per DISTINCT AH line present in a record.
+
+    Preview-only (passive) mode distributes the SAME all-lines table under
+    every expanded line-token key; the true line lives in each entry's
+    submarket_name ('Asian Handicap -3.5'). Dedupe by (submarket_name, odds):
+    one quote per line (OddsPortal average view; no bookmaker breakdown).
+    Full-line (click) mode entries carry real per-token lines - same dedupe
+    is safe there because each token's entries share one submarket_name.
     """
-    out: List[Tuple[str, List[dict]]] = []
-    seen_lines = set()
+    merged: Dict[Tuple[str, str, str], dict] = {}
+    order: List[Tuple[str, str, str]] = []
     for key, val in rec.items():
         if not key.startswith("asian_handicap_") or not key.endswith("_market"):
             continue
         if not isinstance(val, list):
             continue
-        line = _ah_line_from_token(key[: -len("_market")])
-        if line is None or line in seen_lines:
-            continue
-        seen_lines.add(line)
-        out.append((line, val))
-    return out
+        token_line = _ah_line_from_token(key[: -len("_market")])
+        for entry in val:
+            if not isinstance(entry, dict):
+                continue
+            sm = str(entry.get("submarket_name") or "")
+            m = _AH_LINE_RE.search(sm)
+            line = str(float(m.group(1))) if m else token_line
+            if line is None:
+                continue
+            k = (line, str(entry.get("team1_handicap")), str(entry.get("team2_handicap")))
+            if k not in merged:
+                merged[k] = entry
+                order.append(k)
+    by_line: Dict[str, List[dict]] = {}
+    for line, o1, o2 in order:
+        by_line.setdefault(line, []).append(merged[(line, o1, o2)])
+    return sorted(by_line.items(), key=lambda kv: float(kv[0]))
 
 
 def insert_snapshots(conn, match_id: str, scraped_date: str, rec: dict) -> Tuple[int, int]:
@@ -294,7 +315,9 @@ def insert_snapshots(conn, match_id: str, scraped_date: str, rec: dict) -> Tuple
         for entry in entries:
             if not isinstance(entry, dict):
                 continue
-            bookie = str(entry.get("bookmaker_name") or "unknown")[:64]
+            # preview-only passive rows carry no bookmaker breakdown (one
+            # quote per line = OddsPortal average view) - label honestly.
+            bookie = str(entry.get("bookmaker_name") or "average")[:64]
             for sel, key in (("home", "team1_handicap"), ("away", "team2_handicap")):
                 try:
                     odds = float(entry[key])
