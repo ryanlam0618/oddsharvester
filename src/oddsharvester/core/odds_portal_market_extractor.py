@@ -330,6 +330,9 @@ class OddsPortalMarketExtractor:
 
                     if modals:
                         all_histories = []
+                        self.logger.info(
+                            f"Odds-history reference date: {getattr(self, 'history_reference_date', None)!r}"
+                        )
                         for modal_html in modals:
                             parsed_history = self.odds_parser.parse_odds_history_modal(
                                 modal_html,

@@ -128,6 +128,36 @@ class OddsParser:
         self.logger.info("Parsing modal content for odds history.")
         soup = BeautifulSoup(modal_html, "html.parser")
 
+        # afb-T13 Phase0: the primary modal path previously hardcoded
+        # datetime.now(UTC).year for the modal's year-less timestamps -
+        # 2015/2016 movements came out as 2026. Anchor them to the match
+        # date instead (with the season-crossover rule from _parse_timestamp).
+        reference_dt = None
+        if reference_match_date:
+            try:
+                reference_dt = datetime.strptime(reference_match_date, "%Y-%m-%d %H:%M:%S %Z")
+            except ValueError:
+                try:
+                    reference_dt = datetime.fromisoformat(
+                        reference_match_date.replace(" UTC", "+00:00").replace("Z", "+00:00")
+                    )
+                except ValueError:
+                    self.logger.debug(
+                        f"Could not parse reference_match_date for odds history year inference: {reference_match_date}"
+                    )
+
+        def _anchor_year(dt_value: datetime) -> datetime:
+            if reference_dt is None:
+                return dt_value.replace(year=datetime.now(UTC).year)
+            anchored = dt_value.replace(year=reference_dt.year)
+            # season crossover: only decrement when the anchored date lands
+            # MORE than ~31 days after the match date (a Dec movement vs a Jan
+            # kickoff); same-day/近日 movements must NOT be decremented
+            # (a 2016-05-17 18:57 in-play point vs a 20:00 kickoff)
+            if (anchored - reference_dt).days > 31:
+                anchored = anchored.replace(year=anchored.year - 1)
+            return anchored
+
         try:
             odds_history = []
             # Redesign: history columns are siblings inside a flex-row wrapper
@@ -140,7 +170,7 @@ class OddsParser:
                 time_text = ts.get_text(strip=True)
                 try:
                     dt = datetime.strptime(_MONTH_ABBR_RE.sub("Sep", time_text), "%d %b, %H:%M")
-                    formatted_time = dt.replace(year=datetime.now(UTC).year).isoformat()
+                    formatted_time = _anchor_year(dt).isoformat()
                 except ValueError:
                     self.logger.warning(f"Failed to parse datetime: {time_text}")
                     continue
@@ -159,7 +189,7 @@ class OddsParser:
                         _MONTH_ABBR_RE.sub("Sep", opening_ts_div.get_text(strip=True)), "%d %b, %H:%M"
                     )
                     opening_odds = {
-                        "timestamp": dt.replace(year=datetime.now(UTC).year).isoformat(),
+                        "timestamp": _anchor_year(dt).isoformat(),
                         "odds": parse_odds_value(opening_val_div.get_text(strip=True)),
                     }
                 except ValueError:
