@@ -440,10 +440,13 @@ def main() -> int:
                    help="Stage A+B only: scrape + map + count rows, no DB writes")
     args = p.parse_args()
 
-    # league x season work list (all Batch 1+2 pairs)
+    # league x season work list: Batch 1+2 pairs plus any --season labels
+    # (afb-T13: 2025-2026 OOS season is not in clv.SEASONS - union them so
+    # the --season filter cannot silently produce an empty work list).
+    season_labels = sorted(set(list(clv.SEASONS) + list(args.season or [])))
     pairs: List[Tuple[str, str]] = []
     for league in clv.LEAGUE_SLUGS:
-        for season in clv.SEASONS:
+        for season in season_labels:
             pairs.append((league, season))
     if args.league:
         pairs = [x for x in pairs if x[0] in set(args.league)]

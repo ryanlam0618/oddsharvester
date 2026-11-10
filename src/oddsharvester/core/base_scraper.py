@@ -1113,6 +1113,9 @@ class BaseScraper:
                     # Convert period enum to internal value for market extractor
                     # If period is None, get_internal_value will return None and market extractor will use default
                     period_internal = period.get_internal_value(period) if period else None
+                    # afb-T13: anchor odds-history timestamps to the match date
+                    # (the modal omits the year; the parser infers it from this)
+                    self.market_extractor.history_reference_date = match_details.get("match_date")
                     market_data = await self.market_extractor.scrape_markets(
                         page=page,
                         sport=sport,
